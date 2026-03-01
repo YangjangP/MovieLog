@@ -159,7 +159,9 @@
       const fetchData = async () => {
         setIsLoading(true);
         try {
-          const response = await fetch(SCRIPT_URL);
+          // 브라우저 캐시 방지용 타임스탬프 추가
+          const fetchUrl = SCRIPT_URL + "?t=" + new Date().getTime();
+          const response = await fetch(fetchUrl, { cache: 'no-store' });
           const data = await response.json();
           
           const normalize = (arr = []) => arr.map(item => ({
@@ -260,16 +262,19 @@
           
           if (type === 'review') {
             const week = calculateWeek(form.date);
-            const payload = { Date: form.date, Week: week, MovieTitle: form.movieTitle, Rating: parseFloat(form.rating), RawComment: form.comment };
+            // 수정! 시트에 작성하신 헤더 이름인 'Comment'로 전송합니다.
+            const payload = { Date: form.date, Week: week, MovieTitle: form.movieTitle, Rating: parseFloat(form.rating), Comment: form.comment };
             await postDataToSheet('editItem', { sheetName: 'Reviews', id, payload });
             setAppData(prev => ({ ...prev, reviews: prev.reviews.map(r => r.id === id ? { ...r, date: form.date, week, movieTitle: form.movieTitle, rating: payload.Rating, commentKo: form.comment, commentJp: form.comment } : r) }));
           } else if (type === 'post') {
-            const payload = { RawTitle: form.title, RawContent: form.content };
+            // 수정! 시트에 작성하신 헤더 이름인 'Content'와 'Title'로 전송합니다.
+            const payload = { Title: form.title, Content: form.content };
             await postDataToSheet('editItem', { sheetName: 'Posts', id, payload });
             setAppData(prev => ({ ...prev, posts: prev.posts.map(p => p.id === id ? { ...p, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content } : p) }));
             if (selectedPost && selectedPost.id === id) setSelectedPost(prev => ({ ...prev, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content }));
           } else if (type === 'comment') {
-            const payload = { RawComment: form.comment };
+            // 수정! 시트에 작성하신 헤더 이름인 'Comment'로 전송합니다.
+            const payload = { Comment: form.comment };
             await postDataToSheet('editItem', { sheetName: 'Comments', id, payload });
             setAppData(prev => ({ ...prev, comments: prev.comments.map(c => c.id === id ? { ...c, commentKo: form.comment, commentJp: form.comment } : c) }));
           }
