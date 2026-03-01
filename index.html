@@ -50,7 +50,6 @@
     const UI_STRINGS = {
       ko: {
         title: "Movie Log",
-        subtitle: "모두가 함께 만드는 영화 감상문",
         navSummary: "Summary",
         navNotice: "Notice",
         navEvent: "Event",
@@ -86,7 +85,6 @@
       },
       jp: {
         title: "Movie Log",
-        subtitle: "みんなで作る映画レビュー",
         navSummary: "Summary",
         navNotice: "Notice",
         navEvent: "Event",
@@ -166,7 +164,8 @@
       const [editingItem, setEditingItem] = useState(null);
       const [itemToDelete, setItemToDelete] = useState(null); // 삭제 확인 모달용 State
       
-      const todayStr = new Date().toISOString().split('T')[0];
+      // 한국 표준시(KST) 기준으로 오늘 날짜를 가져옵니다.
+      const todayStr = formatKSTDate(new Date().toISOString());
       const currentWeekNum = calculateWeek(todayStr);
       
       // 위크 선택용 State (기본값: 이번 주)
