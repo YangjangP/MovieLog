@@ -37,13 +37,14 @@
       Users: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
       CalendarDays: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>,
       Edit2: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
-      X: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      X: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
+      Trash2: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
     };
 
-    const { Star, Globe, Calendar, User, Film, Send, Loader2, MessageSquare, ClipboardList, Megaphone, Users, CalendarDays, Edit2, X } = Icons;
+    const { Star, Globe, Calendar, User, Film, Send, Loader2, MessageSquare, ClipboardList, Megaphone, Users, CalendarDays, Edit2, X, Trash2 } = Icons;
 
     // --- Google Apps Script URL ---
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjyj3hzxPBqKsuHp2opvpQ0HvZAyfSuwdWKi8W1V4RG-S6w-uAK2VdWRRYAra7CyU5/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbysA1wBydZ0E1m-zH8ckLYpShztE-NEuQSS859swuQ0d8oBqKODQBdY4KE-Wl4sU36i/exec";
 
     // --- UI Strings Dictionary ---
     const UI_STRINGS = {
@@ -62,13 +63,13 @@
         comment: "감상평",
         commentDesc: "한국어 또는 일본어로 작성하면 시트에서 자동 번역됩니다!",
         submit: "기록 남기기",
-        saving: "저장 중...",
+        saving: "처리 중...",
         placeholderReview: "이 영화, 어떠셨나요?",
         noData: "아직 작성된 내용이 없습니다.",
         toggleLang: "日本語",
         langCode: "jp",
         weekPrefix: "Week ",
-        currentWeekSummary: "이번 주 감상문",
+        currentWeekSummary: "",
         postTitle: "게시글 제목",
         postContent: "내용",
         writePost: "게시글 작성",
@@ -78,7 +79,10 @@
         userReviews: "님의 리뷰 모아보기",
         backToList: "목록으로 돌아가기",
         save: "저장",
-        cancel: "취소"
+        cancel: "취소",
+        deleteConfirm: "정말 삭제하시겠습니까?\n(삭제된 데이터는 복구할 수 없습니다)",
+        yes: "예",
+        no: "아니오"
       },
       jp: {
         title: "Movie Log",
@@ -95,13 +99,13 @@
         comment: "感想",
         commentDesc: "韓国語または日本語で入力するとシートで自動翻訳されます！",
         submit: "記録を残す",
-        saving: "保存中...",
+        saving: "処理中...",
         placeholderReview: "この映画、どうでしたか？",
         noData: "まだデータがありません。",
         toggleLang: "한국어",
         langCode: "ko",
         weekPrefix: "第",
-        currentWeekSummary: "今週のレビュー",
+        currentWeekSummary: "",
         postTitle: "記事のタイトル",
         postContent: "内容",
         writePost: "記事を作成",
@@ -111,7 +115,10 @@
         userReviews: "さんのレビュー一覧",
         backToList: "リストに戻る",
         save: "保存",
-        cancel: "キャンセル"
+        cancel: "キャンセル",
+        deleteConfirm: "本当に削除しますか？\n(削除されたデータは復元できません)",
+        yes: "はい",
+        no: "いいえ"
       }
     };
 
@@ -133,7 +140,6 @@
       return week > 0 ? week : 1;
     };
 
-    // 시간 포맷 정리 (T15:00... 등 불필요한 부분 제거)
     const formatDateOnly = (dateString) => {
       if (!dateString) return '';
       return dateString.split('T')[0];
@@ -158,10 +164,15 @@
       const [selectedPost, setSelectedPost] = useState(null);
       const [selectedUser, setSelectedUser] = useState(null);
       const [editingItem, setEditingItem] = useState(null);
-
-      const t = UI_STRINGS[appLang];
+      const [itemToDelete, setItemToDelete] = useState(null); // 삭제 확인 모달용 State
+      
       const todayStr = new Date().toISOString().split('T')[0];
       const currentWeekNum = calculateWeek(todayStr);
+      
+      // 위크 선택용 State (기본값: 이번 주)
+      const [selectedWeek, setSelectedWeek] = useState(currentWeekNum);
+
+      const t = UI_STRINGS[appLang];
 
       const fetchData = async () => {
         setIsLoading(true);
@@ -268,7 +279,6 @@
           
           if (type === 'review') {
             const week = calculateWeek(form.date);
-            // 작성자 정보(Nickname) 추가 전송
             const payload = { Nickname: form.nickname, Date: form.date, Week: week, MovieTitle: form.movieTitle, Rating: parseFloat(form.rating), Comment: form.comment };
             await postDataToSheet('editItem', { sheetName: 'Reviews', id, payload });
             setAppData(prev => ({ ...prev, reviews: prev.reviews.map(r => r.id === id ? { ...r, nickname: form.nickname, date: form.date, week, movieTitle: form.movieTitle, rating: payload.Rating, commentKo: form.comment, commentJp: form.comment } : r) }));
@@ -283,6 +293,42 @@
             setAppData(prev => ({ ...prev, comments: prev.comments.map(c => c.id === id ? { ...c, nickname: form.nickname, commentKo: form.comment, commentJp: form.comment } : c) }));
           }
           setEditingItem(null);
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
+
+      // ✨ 삭제 모달 띄우기 ✨
+      const requestDelete = (id, type) => {
+        setItemToDelete({ id, type });
+      };
+
+      // ✨ 실제 삭제 실행 ✨
+      const executeDelete = async () => {
+        if (!itemToDelete) return;
+        const { id, type } = itemToDelete;
+        
+        setIsSubmitting(true);
+        try {
+          let sheetName = '';
+          if (type === 'review') sheetName = 'Reviews';
+          else if (type === 'post') sheetName = 'Posts';
+          else if (type === 'comment') sheetName = 'Comments';
+
+          await postDataToSheet('deleteItem', { sheetName, id });
+
+          if (type === 'review') {
+            setAppData(prev => ({ ...prev, reviews: prev.reviews.filter(r => r.id !== id) }));
+          } else if (type === 'post') {
+            setAppData(prev => ({ ...prev, posts: prev.posts.filter(p => p.id !== id) }));
+            if (selectedPost && selectedPost.id === id) setSelectedPost(null);
+          } else if (type === 'comment') {
+            setAppData(prev => ({ ...prev, comments: prev.comments.filter(c => c.id !== id) }));
+          }
+          setItemToDelete(null); // 모달 닫기
+        } catch (error) {
+          console.error("Error deleting item:", error);
+          alert("삭제 중 오류가 발생했습니다.");
         } finally {
           setIsSubmitting(false);
         }
@@ -313,7 +359,7 @@
             {targetComments.length > 0 && (
               <div className="space-y-3 mb-4">
                 {targetComments.map(c => (
-                  <div key={c.id} className="bg-slate-800/40 rounded-lg p-3 text-sm group">
+                  <div key={c.id} className="bg-slate-800/40 rounded-lg p-3 text-sm group relative">
                     {editingItem?.id === c.id ? (
                       <form onSubmit={handleEditSave} className="flex flex-col sm:flex-row gap-2">
                         <select required value={editingItem.form.nickname} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, nickname: e.target.value } })} className="bg-slate-900 border border-slate-700 rounded px-2 py-2 sm:py-1 text-white text-sm focus:outline-none focus:border-teal-400">
@@ -322,17 +368,19 @@
                         <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-400 min-h-[60px] resize-y" rows="2" />
                         <div className="flex justify-end gap-1">
                           <button type="submit" disabled={isSubmitting} className="text-teal-400 bg-slate-800 p-2 sm:p-1 hover:bg-slate-700 rounded"><Send className="w-4 h-4" /></button>
-                          <button type="button" onClick={() => setEditingItem(null)} className="text-red-400 bg-slate-800 p-2 sm:p-1 hover:bg-slate-700 rounded"><X className="w-4 h-4" /></button>
+                          <button type="button" onClick={() => setEditingItem(null)} className="text-slate-400 bg-slate-800 p-2 sm:p-1 hover:bg-slate-700 rounded"><X className="w-4 h-4" /></button>
                         </div>
                       </form>
                     ) : (
                       <>
-                        <div className="flex justify-between items-center mb-1">
+                        <div className="flex justify-between items-center mb-1 pr-14">
                           <span className="font-medium text-slate-300 flex items-center gap-1">{USER_EMOJIS[c.nickname]} {c.nickname}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-slate-500">{formatKSTDate(c.createdAt)}</span>
-                            <button onClick={() => setEditingItem({ id: c.id, type: 'comment', form: { nickname: c.nickname, comment: appLang === 'ko' ? c.commentKo : c.commentJp } })} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 transition-opacity"><Edit2 className="w-3.5 h-3.5" /></button>
-                          </div>
+                          <span className="text-xs text-slate-500">{formatKSTDate(c.createdAt)}</span>
+                        </div>
+                        {/* 수정 및 삭제 아이콘 */}
+                        <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setEditingItem({ id: c.id, type: 'comment', form: { nickname: c.nickname, comment: appLang === 'ko' ? c.commentKo : c.commentJp } })} className="text-slate-400 hover:text-teal-400 transition-colors p-1"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => requestDelete(c.id, 'comment')} className="text-slate-400 hover:text-red-400 transition-colors p-1"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                         <p className="text-slate-200 break-words whitespace-pre-wrap">{appLang === 'ko' ? c.commentKo : c.commentJp}</p>
                       </>
@@ -433,15 +481,37 @@
       };
 
       const renderSummary = () => {
-        const weekReviews = appData.reviews.filter(r => r.week === currentWeekNum);
+        const weekReviews = appData.reviews.filter(r => r.week === selectedWeek);
+        // Week 드롭다운 옵션 생성 (1주차부터 현재 주차까지)
+        const weekOptions = Array.from({length: currentWeekNum}, (_, i) => currentWeekNum - i);
+
         return (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <ReviewForm />
-            <div className="flex items-center gap-2 mb-6">
-              <CalendarDays className="w-6 h-6 text-teal-400" />
-              <h2 className="text-xl font-bold text-white">
-                {appLang === 'ko' ? `Week ${currentWeekNum} - ${t.currentWeekSummary}` : `第${currentWeekNum}週 - ${t.currentWeekSummary}`}
-              </h2>
+            
+            {/* Week 선택 영역 */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-6 h-6 text-teal-400" />
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <span className="bg-teal-400/20 text-teal-400 px-3 py-1 rounded-lg">Week {selectedWeek}</span>
+                  {t.currentWeekSummary}
+                </h2>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="text-sm text-slate-400">주차 선택:</label>
+                <select
+                  value={selectedWeek}
+                  onChange={e => setSelectedWeek(Number(e.target.value))}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-teal-400 cursor-pointer"
+                >
+                  {weekOptions.map(w => (
+                    <option key={w} value={w}>
+                      Week {w} {w === currentWeekNum ? '(이번 주)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             
             {weekReviews.length === 0 ? (
@@ -473,8 +543,11 @@
                       </form>
                     ) : (
                       <>
-                        <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { nickname: r.nickname, date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp } })} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
-                        <div className="flex flex-col sm:flex-row justify-between items-start mb-3 sm:pr-8 gap-3">
+                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { nickname: r.nickname, date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp } })} className="text-slate-400 hover:text-teal-400 p-1"><Edit2 className="w-4 h-4" /></button>
+                          <button onClick={() => requestDelete(r.id, 'review')} className="text-slate-400 hover:text-red-400 p-1"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                        <div className="flex flex-col sm:flex-row justify-between items-start mb-3 sm:pr-16 gap-3">
                           <div className="min-w-0 flex-1">
                             <h3 className="text-lg font-bold text-white mb-1 break-words">{r.movieTitle}</h3>
                             <div className="flex flex-wrap gap-2 text-xs text-slate-400">
@@ -522,8 +595,11 @@
                 </form>
               ) : (
                 <>
-                  <button onClick={() => setEditingItem({ id: p.id, type: 'post', form: { nickname: p.nickname, title: appLang === 'ko' ? p.titleKo : p.titleJp, content: appLang === 'ko' ? p.contentKo : p.contentJp } })} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 pr-8 break-words">{appLang === 'ko' ? p.titleKo : p.titleJp}</h2>
+                  <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setEditingItem({ id: p.id, type: 'post', form: { nickname: p.nickname, title: appLang === 'ko' ? p.titleKo : p.titleJp, content: appLang === 'ko' ? p.contentKo : p.contentJp } })} className="text-slate-400 hover:text-teal-400 p-1"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => requestDelete(p.id, 'post')} className="text-slate-400 hover:text-red-400 p-1"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 pr-16 break-words">{appLang === 'ko' ? p.titleKo : p.titleJp}</h2>
                   <div className="text-sm text-slate-400 mb-6 flex flex-wrap gap-3 items-center">
                     <span className="flex items-center gap-1">{USER_EMOJIS[p.nickname]} {p.nickname}</span>
                     <span>{formatKSTDate(p.createdAt)}</span>
@@ -599,8 +675,11 @@
                       </form>
                     ) : (
                       <>
-                        <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { nickname: r.nickname, date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp } })} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
-                        <div className="flex flex-col sm:flex-row justify-between items-start mb-3 sm:pr-8 gap-3">
+                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { nickname: r.nickname, date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp } })} className="text-slate-400 hover:text-teal-400 p-1"><Edit2 className="w-4 h-4" /></button>
+                          <button onClick={() => requestDelete(r.id, 'review')} className="text-slate-400 hover:text-red-400 p-1"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                        <div className="flex flex-col sm:flex-row justify-between items-start mb-3 sm:pr-16 gap-3">
                           <div className="min-w-0 flex-1">
                             <h3 className="text-lg font-bold text-white mb-1 break-words">{r.movieTitle}</h3>
                             <div className="flex flex-wrap gap-2 text-xs text-slate-400">
@@ -693,6 +772,36 @@
               </>
             )}
           </main>
+
+          {/* ✨ 삭제 확인 모달 (팝업) ✨ */}
+          {itemToDelete && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm px-4 animate-in fade-in duration-200">
+              <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+                <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                  <Trash2 className="w-5 h-5 text-red-500" />
+                  {appLang === 'ko' ? '삭제 확인' : '削除の確認'}
+                </h3>
+                <p className="text-sm text-slate-300 mb-6 whitespace-pre-wrap">{t.deleteConfirm}</p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setItemToDelete(null)}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 text-sm bg-slate-800 text-slate-300 font-medium rounded-lg hover:bg-slate-700 transition-colors"
+                  >
+                    {t.no}
+                  </button>
+                  <button
+                    onClick={executeDelete}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 text-sm bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2"
+                  >
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {t.yes}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       );
     }
