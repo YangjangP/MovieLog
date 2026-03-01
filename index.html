@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie Log</title>
+  
+  <!-- Tailwind CSS (디자인) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & Babel (화면 및 기능 구동) -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-200 font-sans selection:bg-teal-500 selection:text-white pb-20">
+  
+  <!-- 앱이 그려질 빈 공간 -->
+  <div id="root"></div>
+
+  <!-- 여기서부터 우리 사이트의 기능 코드입니다 -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // --- 아이콘 세팅 (Lucide 아이콘을 HTML 안에 직접 내장) ---
+    const Icons = {
+      Star: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+      Globe: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+      Calendar: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
+      User: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+      Film: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></svg>,
+      Send: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>,
+      Loader2: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>,
+      MessageSquare: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+      ClipboardList: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>,
+      Megaphone: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>,
+      Users: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+      CalendarDays: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>,
+      Edit2: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
+      X: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    };
+
+    const { Star, Globe, Calendar, User, Film, Send, Loader2, MessageSquare, ClipboardList, Megaphone, Users, CalendarDays, Edit2, X } = Icons;
+
+    // --- Google Apps Script URL ---
+    // 아래 주소는 이전에 설정하신 웹앱 URL을 그대로 넣어주세요.
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjyj3hzxPBqKsuHp2opvpQ0HvZAyfSuwdWKi8W1V4RG-S6w-uAK2VdWRRYAra7CyU5/exec";
+
+    // --- UI Strings Dictionary ---
+    const UI_STRINGS = {
+      ko: {
+        title: "Movie Log",
+        subtitle: "모두가 함께 만드는 영화 감상문",
+        navSummary: "Summary",
+        navNotice: "Notice",
+        navEvent: "Event",
+        navUser: "User",
+        nickname: "닉네임",
+        date: "관람일",
+        movieTitle: "영화 제목",
+        rating: "별점",
+        comment: "감상평",
+        commentDesc: "한국어 또는 일본어로 작성하면 시트에서 자동 번역됩니다!",
+        submit: "기록 남기기",
+        saving: "저장 중...",
+        placeholderReview: "이 영화, 어떠셨나요?",
+        noData: "아직 작성된 내용이 없습니다.",
+        toggleLang: "日本語",
+        langCode: "jp",
+        weekPrefix: "Week ",
+        currentWeekSummary: "이번 주 감상문",
+        postTitle: "게시글 제목",
+        postContent: "내용",
+        writePost: "게시글 작성",
+        writeComment: "댓글 달기",
+        comments: "댓글",
+        selectUser: "유저를 선택해주세요",
+        userReviews: "님의 리뷰 모아보기",
+        backToList: "목록으로 돌아가기",
+        save: "저장",
+        cancel: "취소"
+      },
+      jp: {
+        title: "Movie Log",
+        subtitle: "みんなで作る映画レビュー",
+        navSummary: "Summary",
+        navNotice: "Notice",
+        navEvent: "Event",
+        navUser: "User",
+        nickname: "ニックネーム",
+        date: "鑑賞日",
+        movieTitle: "映画のタイトル",
+        rating: "評価",
+        comment: "感想",
+        commentDesc: "韓国語または日本語で入力するとシートで自動翻訳されます！",
+        submit: "記録を残す",
+        saving: "保存中...",
+        placeholderReview: "この映画、どうでしたか？",
+        noData: "まだデータがありません。",
+        toggleLang: "한국어",
+        langCode: "ko",
+        weekPrefix: "第",
+        currentWeekSummary: "今週のレビュー",
+        postTitle: "記事のタイトル",
+        postContent: "内容",
+        writePost: "記事を作成",
+        writeComment: "コメントする",
+        comments: "コメント",
+        selectUser: "ユーザーを選択してください",
+        userReviews: "さんのレビュー一覧",
+        backToList: "リストに戻る",
+        save: "保存",
+        cancel: "キャンセル"
+      }
+    };
+
+    const NICKNAMES = ['Yangjangp', 'Kani', 'Kal', 'N', 'Yunjo'];
+    const USER_EMOJIS = {
+      'Yangjangp': '🎬',
+      'Kani': '🦀',
+      'Kal': '🔪',
+      'N': '🐶',
+      'Yunjo': '🏃‍♀️‍➡️'
+    };
+    const START_DATE = new Date('2025-11-24T00:00:00Z');
+
+    const calculateWeek = (dateString) => {
+      const targetDate = new Date(dateString + 'T00:00:00Z');
+      const diffTime = targetDate - START_DATE;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const week = Math.floor(diffDays / 7) + 1;
+      return week > 0 ? week : 1;
+    };
+
+    const formatKSTDate = (isoString) => {
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return isoString;
+      const kst = new Date(d.getTime() + (9 * 60 * 60 * 1000));
+      return kst.toISOString().split('T')[0];
+    };
+
+    const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+
+    function App() {
+      const [appData, setAppData] = useState({ reviews: [], posts: [], comments: [] });
+      const [appLang, setAppLang] = useState('ko');
+      const [activeTab, setActiveTab] = useState('summary');
+      const [isLoading, setIsLoading] = useState(true);
+      const [isSubmitting, setIsSubmitting] = useState(false);
+
+      const [selectedPost, setSelectedPost] = useState(null);
+      const [selectedUser, setSelectedUser] = useState(null);
+      const [editingItem, setEditingItem] = useState(null);
+
+      const t = UI_STRINGS[appLang];
+      const todayStr = new Date().toISOString().split('T')[0];
+      const currentWeekNum = calculateWeek(todayStr);
+
+      const fetchData = async () => {
+        setIsLoading(true);
+        try {
+          const response = await fetch(SCRIPT_URL);
+          const data = await response.json();
+          
+          const normalize = (arr = []) => arr.map(item => ({
+            id: item.ID || item.id,
+            type: item.Type || item.type,
+            parentId: item.ParentID || item.parentId,
+            parentType: item.ParentType || item.parentType,
+            nickname: item.Nickname || item.nickname,
+            date: item.Date || item.date,
+            week: item.Week || item.week,
+            movieTitle: item.MovieTitle || item.movieTitle,
+            rating: item.Rating || item.rating,
+            titleKo: item.TitleKo || item.titleKo,
+            titleJp: item.TitleJp || item.titleJp,
+            contentKo: item.ContentKo || item.contentKo,
+            contentJp: item.ContentJp || item.contentJp,
+            commentKo: item.CommentKo || item.commentKo,
+            commentJp: item.CommentJp || item.commentJp,
+            createdAt: item.CreatedAt || item.createdAt
+          }));
+
+          setAppData({
+            reviews: normalize(data.reviews),
+            posts: normalize(data.posts),
+            comments: normalize(data.comments)
+          });
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        fetchData();
+      }, []);
+
+      const postDataToSheet = async (action, payload) => {
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action, payload })
+        });
+        return payload;
+      };
+
+      const submitReview = async (e, formData) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+          const week = calculateWeek(formData.date);
+          const newReview = {
+            id: generateId(), nickname: formData.nickname, date: formData.date, week: week,
+            movieTitle: formData.movieTitle, rating: parseFloat(formData.rating),
+            commentKo: formData.comment, commentJp: formData.comment, 
+            rawComment: formData.comment,
+            createdAt: new Date().toISOString()
+          };
+          await postDataToSheet('addReview', newReview);
+          setAppData(prev => ({ ...prev, reviews: [newReview, ...prev.reviews] }));
+        } finally { setIsSubmitting(false); }
+      };
+
+      const submitPost = async (e, formData, type) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+          const newPost = {
+            id: generateId(), type: type, nickname: formData.nickname,
+            titleKo: formData.title, titleJp: formData.title, rawTitle: formData.title,
+            contentKo: formData.content, contentJp: formData.content, rawContent: formData.content,
+            createdAt: new Date().toISOString()
+          };
+          await postDataToSheet('addPost', newPost);
+          setAppData(prev => ({ ...prev, posts: [newPost, ...prev.posts] }));
+        } finally { setIsSubmitting(false); }
+      };
+
+      const submitComment = async (e, formData, parentId, parentType) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+          const newComment = {
+            id: generateId(), parentId: parentId, parentType: parentType, nickname: formData.nickname,
+            commentKo: formData.comment, commentJp: formData.comment, rawComment: formData.comment,
+            createdAt: new Date().toISOString()
+          };
+          await postDataToSheet('addComment', newComment);
+          setAppData(prev => ({ ...prev, comments: [...prev.comments, newComment] }));
+        } finally { setIsSubmitting(false); }
+      };
+
+      const handleEditSave = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+          const { id, type, form } = editingItem;
+          
+          if (type === 'review') {
+            const week = calculateWeek(form.date);
+            const payload = { Date: form.date, Week: week, MovieTitle: form.movieTitle, Rating: parseFloat(form.rating), RawComment: form.comment };
+            await postDataToSheet('editItem', { sheetName: 'Reviews', id, payload });
+            setAppData(prev => ({ ...prev, reviews: prev.reviews.map(r => r.id === id ? { ...r, date: form.date, week, movieTitle: form.movieTitle, rating: payload.Rating, commentKo: form.comment, commentJp: form.comment } : r) }));
+          } else if (type === 'post') {
+            const payload = { RawTitle: form.title, RawContent: form.content };
+            await postDataToSheet('editItem', { sheetName: 'Posts', id, payload });
+            setAppData(prev => ({ ...prev, posts: prev.posts.map(p => p.id === id ? { ...p, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content } : p) }));
+            if (selectedPost && selectedPost.id === id) setSelectedPost(prev => ({ ...prev, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content }));
+          } else if (type === 'comment') {
+            const payload = { RawComment: form.comment };
+            await postDataToSheet('editItem', { sheetName: 'Comments', id, payload });
+            setAppData(prev => ({ ...prev, comments: prev.comments.map(c => c.id === id ? { ...c, commentKo: form.comment, commentJp: form.comment } : c) }));
+          }
+          setEditingItem(null);
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
+
+      const renderStars = (rating) => {
+        const stars = [];
+        for (let i = 1; i <= 5; i++) {
+          if (rating >= i) stars.push(<Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />);
+          else if (rating >= i - 0.5) stars.push(
+            <div key={i} className="relative w-4 h-4"><Star className="absolute w-4 h-4 text-gray-600" /><div className="absolute overflow-hidden w-1/2"><Star className="w-4 h-4 text-yellow-400 fill-yellow-400" /></div></div>
+          );
+          else stars.push(<Star key={i} className="w-4 h-4 text-gray-600" />);
+        }
+        return <div className="flex space-x-0.5">{stars}</div>;
+      };
+
+      const CommentSection = ({ parentId, parentType }) => {
+        const [commentForm, setCommentForm] = useState({ nickname: NICKNAMES[0], comment: '' });
+        const targetComments = appData.comments.filter(c => c.parentId === parentId);
+
+        return (
+          <div className="mt-4 pt-4 border-t border-slate-700/50">
+            <h4 className="text-sm font-semibold flex items-center gap-1.5 text-teal-400 mb-3">
+              <MessageSquare className="w-4 h-4" /> {t.comments} ({targetComments.length})
+            </h4>
+            
+            {targetComments.length > 0 && (
+              <div className="space-y-3 mb-4">
+                {targetComments.map(c => (
+                  <div key={c.id} className="bg-slate-800/40 rounded-lg p-3 text-sm group">
+                    {editingItem?.id === c.id ? (
+                      <form onSubmit={handleEditSave} className="flex gap-2">
+                        <input type="text" required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-teal-400" />
+                        <button type="submit" disabled={isSubmitting} className="text-teal-400 p-1 hover:bg-slate-700 rounded"><Send className="w-4 h-4" /></button>
+                        <button type="button" onClick={() => setEditingItem(null)} className="text-red-400 p-1 hover:bg-slate-700 rounded"><X className="w-4 h-4" /></button>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-medium text-slate-300 flex items-center gap-1">{USER_EMOJIS[c.nickname]} {c.nickname}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-500">{formatKSTDate(c.createdAt)}</span>
+                            <button onClick={() => setEditingItem({ id: c.id, type: 'comment', form: { comment: appLang === 'ko' ? c.commentKo : c.commentJp } })} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 transition-opacity"><Edit2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                        <p className="text-slate-200">{appLang === 'ko' ? c.commentKo : c.commentJp}</p>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <form onSubmit={(e) => {
+              submitComment(e, commentForm, parentId, parentType).then(() => setCommentForm({...commentForm, comment: ''}));
+            }} className="flex gap-2">
+              <select 
+                value={commentForm.nickname} 
+                onChange={e => setCommentForm({...commentForm, nickname: e.target.value})}
+                className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+              >
+                {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+              <input 
+                type="text" required placeholder={t.writeComment}
+                value={commentForm.comment}
+                onChange={e => setCommentForm({...commentForm, comment: e.target.value})}
+                className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+              />
+              <button type="submit" disabled={isSubmitting} className="bg-slate-700 hover:bg-teal-500 hover:text-white px-3 py-2 rounded-lg transition-colors">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </button>
+            </form>
+          </div>
+        );
+      };
+
+      const ReviewForm = () => {
+        const [form, setForm] = useState({ nickname: NICKNAMES[0], date: todayStr, movieTitle: '', rating: 5.0, comment: '' });
+        return (
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl mb-8">
+            <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2"><Film className="w-5 h-5 text-teal-400" />새 리뷰 작성</h2>
+            <form onSubmit={e => submitReview(e, form).then(() => setForm({...form, movieTitle: '', comment: ''}))} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-400 mb-1">{t.nickname}</label>
+                    <select value={form.nickname} onChange={e => setForm({...form, nickname: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500">
+                      {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-400 mb-1">{t.date}</label>
+                    <input type="date" required value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 [color-scheme:dark]" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">{t.movieTitle}</label>
+                  <input type="text" required value={form.movieTitle} onChange={e => setForm({...form, movieTitle: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1 flex justify-between"><span>{t.rating}</span><span className="text-teal-400">{form.rating}</span></label>
+                  <input type="range" min="0.5" max="5" step="0.5" value={form.rating} onChange={e => setForm({...form, rating: e.target.value})} className="w-full accent-teal-500 mb-2" />
+                  <div className="flex justify-center bg-slate-800/40 py-1.5 rounded-lg">{renderStars(parseFloat(form.rating))}</div>
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <label className="block text-xs text-slate-400 mb-1">{t.comment}</label>
+                <p className="text-[10px] text-teal-400/80 mb-2">{t.commentDesc}</p>
+                <textarea required placeholder={t.placeholderReview} value={form.comment} onChange={e => setForm({...form, comment: e.target.value})} className="flex-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none mb-3" />
+                <button type="submit" disabled={isSubmitting} className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-2.5 rounded-lg flex justify-center items-center gap-2">
+                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</> : <><Send className="w-4 h-4" /> {t.submit}</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        );
+      };
+
+      const BoardForm = ({ type }) => {
+        const [form, setForm] = useState({ nickname: NICKNAMES[0], title: '', content: '' });
+        return (
+          <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 mb-6">
+            <h3 className="font-semibold text-white mb-3">{t.writePost}</h3>
+            <form onSubmit={e => submitPost(e, form, type).then(() => setForm({...form, title: '', content: ''}))} className="space-y-3">
+              <div className="flex gap-3">
+                <select value={form.nickname} onChange={e => setForm({...form, nickname: e.target.value})} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white">
+                  {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+                <input type="text" required placeholder={t.postTitle} value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+              </div>
+              <textarea required placeholder={t.postContent} rows="3" value={form.content} onChange={e => setForm({...form, content: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white resize-none" />
+              <button type="submit" disabled={isSubmitting} className="bg-teal-500 text-slate-950 font-bold py-2 px-4 rounded-lg w-full text-sm flex justify-center items-center gap-2">
+                {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</> : t.submit}
+              </button>
+            </form>
+          </div>
+        );
+      };
+
+      const renderSummary = () => {
+        const weekReviews = appData.reviews.filter(r => r.week === currentWeekNum);
+        return (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ReviewForm />
+            <div className="flex items-center gap-2 mb-6">
+              <CalendarDays className="w-6 h-6 text-teal-400" />
+              <h2 className="text-xl font-bold text-white">
+                {appLang === 'ko' ? `Week ${currentWeekNum} - ${t.currentWeekSummary}` : `第${currentWeekNum}週 - ${t.currentWeekSummary}`}
+              </h2>
+            </div>
+            
+            {weekReviews.length === 0 ? (
+              <div className="text-center py-10 text-slate-500 border border-dashed border-slate-700 rounded-xl bg-slate-900/50">{t.noData}</div>
+            ) : (
+              <div className="grid gap-6">
+                {weekReviews.map(r => (
+                  <div key={r.id} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg relative group">
+                    {editingItem?.id === r.id ? (
+                      <form onSubmit={handleEditSave} className="space-y-3 mb-4">
+                        <div className="flex gap-2">
+                          <input type="date" required value={editingItem.form.date} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, date: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
+                          <input type="text" required value={editingItem.form.movieTitle} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, movieTitle: e.target.value } })} className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
+                        </div>
+                        <div className="flex items-center gap-4 bg-slate-800/30 p-2 rounded">
+                           <span className="text-teal-400 text-sm font-bold w-6">{editingItem.form.rating}</span>
+                           <input type="range" min="0.5" max="5" step="0.5" value={editingItem.form.rating} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, rating: e.target.value } })} className="flex-1 accent-teal-500" />
+                           <div className="flex justify-center">{renderStars(parseFloat(editingItem.form.rating))}</div>
+                        </div>
+                        <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-none focus:border-teal-400" rows="3" />
+                        <div className="flex justify-end gap-2">
+                          <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-1.5 text-sm bg-slate-700 rounded hover:bg-slate-600 transition-colors">{t.cancel}</button>
+                          <button type="submit" disabled={isSubmitting} className="px-4 py-1.5 text-sm bg-teal-500 text-slate-900 font-bold rounded hover:bg-teal-400 transition-colors">{t.save}</button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { date: r.date, movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp } })} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
+                        <div className="flex justify-between items-start mb-3 pr-8">
+                          <div>
+                            <h3 className="text-lg font-bold text-white mb-1">{r.movieTitle}</h3>
+                            <div className="flex gap-2 text-xs text-slate-400">
+                              <span className="bg-slate-800 px-2 py-0.5 rounded flex items-center gap-1">{USER_EMOJIS[r.nickname]} {r.nickname}</span>
+                              <span>{r.date} (Week {r.week}) · 작성일: {formatKSTDate(r.createdAt)}</span>
+                            </div>
+                          </div>
+                          <div className="bg-slate-800/80 px-2 py-1 rounded-lg text-center">
+                            <div className="text-lg font-bold text-yellow-400 leading-none mb-1">{r.rating}</div>
+                            {renderStars(r.rating)}
+                          </div>
+                        </div>
+                        <p className="text-slate-300 text-sm mt-3 whitespace-pre-wrap">{appLang === 'ko' ? r.commentKo : r.commentJp}</p>
+                      </>
+                    )}
+                    <CommentSection parentId={r.id} parentType="review" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      const renderBoard = (type) => {
+        if (selectedPost) {
+          const p = selectedPost;
+          return (
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg animate-in slide-in-from-right-4 relative group">
+              <button onClick={() => setSelectedPost(null)} className="text-teal-400 text-sm mb-4 hover:underline flex items-center gap-1">← {t.backToList}</button>
+              
+              {editingItem?.id === p.id ? (
+                <form onSubmit={handleEditSave} className="space-y-3 mb-6">
+                   <input type="text" required value={editingItem.form.title} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, title: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:border-teal-400" />
+                   <textarea required value={editingItem.form.content} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, content: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white min-h-[100px] resize-none focus:border-teal-400" />
+                   <div className="flex justify-end gap-2">
+                     <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-1.5 text-sm bg-slate-700 rounded hover:bg-slate-600 transition-colors">{t.cancel}</button>
+                     <button type="submit" disabled={isSubmitting} className="px-4 py-1.5 text-sm bg-teal-500 text-slate-900 font-bold rounded hover:bg-teal-400 transition-colors">{t.save}</button>
+                   </div>
+                </form>
+              ) : (
+                <>
+                  <button onClick={() => setEditingItem({ id: p.id, type: 'post', form: { title: appLang === 'ko' ? p.titleKo : p.titleJp, content: appLang === 'ko' ? p.contentKo : p.contentJp } })} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
+                  <h2 className="text-2xl font-bold text-white mb-2 pr-8">{appLang === 'ko' ? p.titleKo : p.titleJp}</h2>
+                  <div className="text-sm text-slate-400 mb-6 flex gap-3 items-center">
+                    <span className="flex items-center gap-1">{USER_EMOJIS[p.nickname]} {p.nickname}</span>
+                    <span>{formatKSTDate(p.createdAt)}</span>
+                  </div>
+                  <div className="text-slate-200 whitespace-pre-wrap min-h-[100px] mb-8">{appLang === 'ko' ? p.contentKo : p.contentJp}</div>
+                </>
+              )}
+              <CommentSection parentId={p.id} parentType="post" />
+            </div>
+          );
+        }
+
+        const filteredPosts = appData.posts.filter(p => p.type === type);
+        return (
+          <div className="animate-in fade-in duration-500">
+            <BoardForm type={type} />
+            <div className="space-y-3">
+              {filteredPosts.length === 0 ? (
+                 <div className="text-center py-10 text-slate-500">{t.noData}</div>
+              ) : (
+                filteredPosts.map(p => {
+                  const commentCount = appData.comments.filter(c => c.parentId === p.id).length;
+                  return (
+                    <div key={p.id} onClick={() => setSelectedPost(p)} className="bg-slate-900 border border-slate-800 p-4 rounded-xl cursor-pointer hover:border-teal-500 transition-colors flex justify-between items-center group">
+                      <div>
+                        <h4 className="text-slate-200 font-medium group-hover:text-teal-400 transition-colors">{appLang === 'ko' ? p.titleKo : p.titleJp}</h4>
+                        <span className="text-xs text-slate-500 mt-1 block flex items-center gap-1">{USER_EMOJIS[p.nickname]} {p.nickname} · {formatKSTDate(p.createdAt)}</span>
+                      </div>
+                      {commentCount > 0 && (
+                        <span className="flex items-center gap-1 text-xs bg-slate-800 text-teal-400 px-2 py-1 rounded-full"><MessageSquare className="w-3 h-3"/> {commentCount}</span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      const renderUser = () => {
+        if (selectedUser) {
+          const userReviews = appData.reviews.filter(r => r.nickname === selectedUser);
+          return (
+            <div className="animate-in slide-in-from-right-4">
+              <button onClick={() => setSelectedUser(null)} className="text-teal-400 text-sm mb-4 hover:underline flex items-center gap-1">← {t.backToList}</button>
+              <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                <span className="text-2xl">{USER_EMOJIS[selectedUser]}</span> {selectedUser}{t.userReviews} ({userReviews.length})
+              </h2>
+              <div className="grid gap-6">
+                {userReviews.map(r => (
+                  <div key={r.id} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg relative group">
+                    {editingItem?.id === r.id ? (
+                      <form onSubmit={handleEditSave} className="space-y-3 mb-4">
+                        <div className="flex gap-2">
+                          <input type="date" required value={editingItem.form.date} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, date: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
+                          <input type="text" required value={editingItem.form.movieTitle} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, movieTitle: e.target.value } })} className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
+                        </div>
+                        <div className="flex items-center gap-4 bg-slate-800/30 p-2 rounded">
+                           <span className="text-teal-400 text-sm font-bold w-6">{editingItem.form.rating}</span>
+                           <input type="range" min="0.5" max="5" step="0.5" value={editingItem.form.rating} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, rating: e.target.value } })} className="flex-1 accent-teal-500" />
+                           <div className="flex justify-center">{renderStars(parseFloat(editingItem.form.rating))}</div>
+                        </div>
+                        <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-none focus:border-teal-400" rows="3" />
+                        <div className="flex justify-end gap-2">
+                          <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-1.5 text-sm bg-slate-700 rounded hover:bg-slate-600 transition-colors">{t.cancel}</button>
+                          <button type="submit" disabled={isSubmitting} className="px-4 py-1.5 text-sm bg-teal-500 text-slate-900 font-bold rounded hover:bg-teal-400 transition-colors">{t.save}</button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { date: r.date, movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp } })} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
+                        <div className="flex justify-between items-start mb-3 pr-8">
+                          <div>
+                            <h3 className="text-lg font-bold text-white mb-1">{r.movieTitle}</h3>
+                            <div className="flex gap-2 text-xs text-slate-400">
+                              <span className="bg-slate-800 px-2 py-0.5 rounded flex items-center gap-1">{USER_EMOJIS[r.nickname]} {r.nickname}</span>
+                              <span>{r.date} (Week {r.week}) · 작성일: {formatKSTDate(r.createdAt)}</span>
+                            </div>
+                          </div>
+                          <div className="bg-slate-800/80 px-2 py-1 rounded-lg text-center">
+                            <div className="text-lg font-bold text-yellow-400 leading-none mb-1">{r.rating}</div>
+                            {renderStars(r.rating)}
+                          </div>
+                        </div>
+                        <p className="text-slate-300 text-sm mt-3 whitespace-pre-wrap">{appLang === 'ko' ? r.commentKo : r.commentJp}</p>
+                      </>
+                    )}
+                    <CommentSection parentId={r.id} parentType="review" />
+                  </div>
+                ))}
+                {userReviews.length === 0 && <p className="text-slate-500 text-center py-10">{t.noData}</p>}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="animate-in fade-in grid grid-cols-2 md:grid-cols-3 gap-4">
+            {NICKNAMES.map(name => {
+              const count = appData.reviews.filter(r => r.nickname === name).length;
+              return (
+                <div key={name} onClick={() => setSelectedUser(name)} className="bg-slate-900 border border-slate-800 hover:border-teal-500 p-6 rounded-2xl cursor-pointer text-center group transition-all">
+                   <div className="w-16 h-16 mx-auto bg-slate-800 rounded-full flex items-center justify-center mb-3 group-hover:bg-teal-500/20 transition-colors text-3xl">
+                      {USER_EMOJIS[name]}
+                   </div>
+                   <h3 className="text-lg font-bold text-slate-200 group-hover:text-white">{name}</h3>
+                   <p className="text-sm text-teal-500 mt-1">{count} Reviews</p>
+                </div>
+              );
+            })}
+          </div>
+        );
+      };
+
+      return (
+        <>
+          <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-20 shadow-lg">
+            <div className="max-w-4xl mx-auto px-4 pt-4">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h1 className="text-2xl font-black text-teal-400 tracking-tight">{t.title}</h1>
+                  <p className="text-xs text-slate-400 mt-0.5">{t.subtitle}</p>
+                </div>
+                <button onClick={() => setAppLang(t.langCode)} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded-full border border-slate-700 transition-colors">
+                  <Globe className="w-3.5 h-3.5 text-teal-400" /> {t.toggleLang}
+                </button>
+              </div>
+              <div className="flex gap-1 overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'summary', icon: ClipboardList, label: t.navSummary },
+                  { id: 'notice', icon: Megaphone, label: t.navNotice },
+                  { id: 'event', icon: Calendar, label: t.navEvent },
+                  { id: 'user', icon: Users, label: t.navUser }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => { setActiveTab(tab.id); setSelectedPost(null); setSelectedUser(null); }}
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
+                      ${activeTab === tab.id ? 'border-teal-400 text-teal-400 bg-teal-400/5' : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+                  >
+                    <tab.icon className="w-4 h-4" /> {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-2xl mx-auto px-4 py-8">
+            {isLoading ? (
+               <div className="flex flex-col items-center justify-center py-20 text-teal-500">
+                 <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                 <p className="text-sm">데이터를 불러오는 중...</p>
+               </div>
+            ) : (
+              <>
+                {activeTab === 'summary' && renderSummary()}
+                {activeTab === 'notice' && renderBoard('notice')}
+                {activeTab === 'event' && renderBoard('event')}
+                {activeTab === 'user' && renderUser()}
+              </>
+            )}
+          </main>
+        </>
+      );
+    }
+
+    // React 앱을 화면에 그립니다.
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
