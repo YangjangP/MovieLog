@@ -52,7 +52,6 @@
         title: "Movie Log",
         navSummary: "Summary",
         navNotice: "Notice",
-        navEvent: "Event",
         navForum: "Forum",
         navUser: "User",
         nickname: "닉네임",
@@ -85,9 +84,9 @@
       },
       jp: {
         title: "Movie Log",
+        subtitle: "みんなで作る映画レビュー",
         navSummary: "Summary",
         navNotice: "Notice",
-        navEvent: "Event",
         navForum: "Forum",
         navUser: "User",
         nickname: "ニックネーム",
@@ -738,7 +737,6 @@
                 {[
                   { id: 'summary', icon: ClipboardList, label: t.navSummary },
                   { id: 'notice', icon: Megaphone, label: t.navNotice },
-                  { id: 'event', icon: Calendar, label: t.navEvent },
                   { id: 'forum', icon: MessageSquare, label: t.navForum },
                   { id: 'user', icon: Users, label: t.navUser }
                 ].map(tab => (
@@ -765,7 +763,6 @@
               <>
                 {activeTab === 'summary' && renderSummary()}
                 {activeTab === 'notice' && renderBoard('notice')}
-                {activeTab === 'event' && renderBoard('event')}
                 {activeTab === 'forum' && renderBoard('forum')}
                 {activeTab === 'user' && renderUser()}
               </>
@@ -811,4 +808,3 @@
   </script>
 </body>
 </html>
-
