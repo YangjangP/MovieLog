@@ -53,13 +53,14 @@
         navSummary: "Summary",
         navNotice: "Notice",
         navEvent: "Event",
+        navForum: "Forum",
         navUser: "User",
         nickname: "닉네임",
         date: "관람일",
         movieTitle: "영화 제목",
         rating: "별점",
         comment: "감상평",
-        commentDesc: "한국어 또는 일본어로 작성하면 자동 번역됩니다!",
+        commentDesc: "한국어 또는 일본어로 작성하면 시트에서 자동 번역됩니다!",
         submit: "기록 남기기",
         saving: "저장 중...",
         placeholderReview: "이 영화, 어떠셨나요?",
@@ -85,13 +86,14 @@
         navSummary: "Summary",
         navNotice: "Notice",
         navEvent: "Event",
+        navForum: "Forum",
         navUser: "User",
         nickname: "ニックネーム",
         date: "鑑賞日",
         movieTitle: "映画のタイトル",
         rating: "評価",
         comment: "感想",
-        commentDesc: "韓国語または日本語で入力すると自動翻訳されます！",
+        commentDesc: "韓国語または日本語で入力するとシートで自動翻訳されます！",
         submit: "記録を残す",
         saving: "保存中...",
         placeholderReview: "この映画、どうでしたか？",
@@ -300,12 +302,8 @@
 
       const CommentSection = ({ parentId, parentType }) => {
         const [commentForm, setCommentForm] = useState({ nickname: NICKNAMES[0], comment: '' });
-        
-        // 오래된 댓글이 위로 올라오도록(작성일 기준 오름차순) 정렬 방식을 추가했습니다.
-        const targetComments = appData.comments
-          .filter(c => c.parentId === parentId)
-          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-        
+        const targetComments = appData.comments.filter(c => c.parentId === parentId);
+
         return (
           <div className="mt-4 pt-4 border-t border-slate-700/50">
             <h4 className="text-sm font-semibold flex items-center gap-1.5 text-teal-400 mb-3">
@@ -663,6 +661,7 @@
                   { id: 'summary', icon: ClipboardList, label: t.navSummary },
                   { id: 'notice', icon: Megaphone, label: t.navNotice },
                   { id: 'event', icon: Calendar, label: t.navEvent },
+                  { id: 'forum', icon: MessageSquare, label: t.navForum },
                   { id: 'user', icon: Users, label: t.navUser }
                 ].map(tab => (
                   <button
@@ -689,6 +688,7 @@
                 {activeTab === 'summary' && renderSummary()}
                 {activeTab === 'notice' && renderBoard('notice')}
                 {activeTab === 'event' && renderBoard('event')}
+                {activeTab === 'forum' && renderBoard('forum')}
                 {activeTab === 'user' && renderUser()}
               </>
             )}
@@ -703,5 +703,3 @@
   </script>
 </body>
 </html>
-
-
