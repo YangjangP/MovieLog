@@ -43,7 +43,6 @@
     const { Star, Globe, Calendar, User, Film, Send, Loader2, MessageSquare, ClipboardList, Megaphone, Users, CalendarDays, Edit2, X } = Icons;
 
     // --- Google Apps Script URL ---
-    // 아래 주소는 이전에 설정하신 웹앱 URL을 그대로 넣어주세요.
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjyj3hzxPBqKsuHp2opvpQ0HvZAyfSuwdWKi8W1V4RG-S6w-uAK2VdWRRYAra7CyU5/exec";
 
     // --- UI Strings Dictionary ---
@@ -60,7 +59,7 @@
         movieTitle: "영화 제목",
         rating: "별점",
         comment: "감상평",
-        commentDesc: "한국어 또는 일본어로 작성하면 시트에서 자동 번역됩니다!",
+        commentDesc: "한국어 또는 일본어로 작성하면 자동 번역됩니다!",
         submit: "기록 남기기",
         saving: "저장 중...",
         placeholderReview: "이 영화, 어떠셨나요?",
@@ -92,7 +91,7 @@
         movieTitle: "映画のタイトル",
         rating: "評価",
         comment: "感想",
-        commentDesc: "韓国語または日本語で入力するとシートで自動翻訳されます！",
+        commentDesc: "韓国語または日本語で入力すると自動翻訳されます！",
         submit: "記録を残す",
         saving: "保存中...",
         placeholderReview: "この映画、どうでしたか？",
@@ -132,6 +131,12 @@
       return week > 0 ? week : 1;
     };
 
+    // 시간 포맷 정리 (T15:00... 등 불필요한 부분 제거)
+    const formatDateOnly = (dateString) => {
+      if (!dateString) return '';
+      return dateString.split('T')[0];
+    };
+
     const formatKSTDate = (isoString) => {
       const d = new Date(isoString);
       if (isNaN(d.getTime())) return isoString;
@@ -159,7 +164,6 @@
       const fetchData = async () => {
         setIsLoading(true);
         try {
-          // 브라우저 캐시 방지용 타임스탬프 추가
           const fetchUrl = SCRIPT_URL + "?t=" + new Date().getTime();
           const response = await fetch(fetchUrl, { cache: 'no-store' });
           const data = await response.json();
@@ -262,21 +266,19 @@
           
           if (type === 'review') {
             const week = calculateWeek(form.date);
-            // 수정! 시트에 작성하신 헤더 이름인 'Comment'로 전송합니다.
-            const payload = { Date: form.date, Week: week, MovieTitle: form.movieTitle, Rating: parseFloat(form.rating), Comment: form.comment };
+            // 작성자 정보(Nickname) 추가 전송
+            const payload = { Nickname: form.nickname, Date: form.date, Week: week, MovieTitle: form.movieTitle, Rating: parseFloat(form.rating), Comment: form.comment };
             await postDataToSheet('editItem', { sheetName: 'Reviews', id, payload });
-            setAppData(prev => ({ ...prev, reviews: prev.reviews.map(r => r.id === id ? { ...r, date: form.date, week, movieTitle: form.movieTitle, rating: payload.Rating, commentKo: form.comment, commentJp: form.comment } : r) }));
+            setAppData(prev => ({ ...prev, reviews: prev.reviews.map(r => r.id === id ? { ...r, nickname: form.nickname, date: form.date, week, movieTitle: form.movieTitle, rating: payload.Rating, commentKo: form.comment, commentJp: form.comment } : r) }));
           } else if (type === 'post') {
-            // 수정! 시트에 작성하신 헤더 이름인 'Content'와 'Title'로 전송합니다.
-            const payload = { Title: form.title, Content: form.content };
+            const payload = { Nickname: form.nickname, Title: form.title, Content: form.content };
             await postDataToSheet('editItem', { sheetName: 'Posts', id, payload });
-            setAppData(prev => ({ ...prev, posts: prev.posts.map(p => p.id === id ? { ...p, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content } : p) }));
-            if (selectedPost && selectedPost.id === id) setSelectedPost(prev => ({ ...prev, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content }));
+            setAppData(prev => ({ ...prev, posts: prev.posts.map(p => p.id === id ? { ...p, nickname: form.nickname, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content } : p) }));
+            if (selectedPost && selectedPost.id === id) setSelectedPost(prev => ({ ...prev, nickname: form.nickname, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content }));
           } else if (type === 'comment') {
-            // 수정! 시트에 작성하신 헤더 이름인 'Comment'로 전송합니다.
-            const payload = { Comment: form.comment };
+            const payload = { Nickname: form.nickname, Comment: form.comment };
             await postDataToSheet('editItem', { sheetName: 'Comments', id, payload });
-            setAppData(prev => ({ ...prev, comments: prev.comments.map(c => c.id === id ? { ...c, commentKo: form.comment, commentJp: form.comment } : c) }));
+            setAppData(prev => ({ ...prev, comments: prev.comments.map(c => c.id === id ? { ...c, nickname: form.nickname, commentKo: form.comment, commentJp: form.comment } : c) }));
           }
           setEditingItem(null);
         } finally {
@@ -311,10 +313,15 @@
                 {targetComments.map(c => (
                   <div key={c.id} className="bg-slate-800/40 rounded-lg p-3 text-sm group">
                     {editingItem?.id === c.id ? (
-                      <form onSubmit={handleEditSave} className="flex gap-2">
-                        <input type="text" required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-teal-400" />
-                        <button type="submit" disabled={isSubmitting} className="text-teal-400 p-1 hover:bg-slate-700 rounded"><Send className="w-4 h-4" /></button>
-                        <button type="button" onClick={() => setEditingItem(null)} className="text-red-400 p-1 hover:bg-slate-700 rounded"><X className="w-4 h-4" /></button>
+                      <form onSubmit={handleEditSave} className="flex flex-col sm:flex-row gap-2">
+                        <select required value={editingItem.form.nickname} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, nickname: e.target.value } })} className="bg-slate-900 border border-slate-700 rounded px-2 py-2 sm:py-1 text-white text-sm focus:outline-none focus:border-teal-400">
+                          {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                        <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-400 min-h-[60px] resize-y" rows="2" />
+                        <div className="flex justify-end gap-1">
+                          <button type="submit" disabled={isSubmitting} className="text-teal-400 bg-slate-800 p-2 sm:p-1 hover:bg-slate-700 rounded"><Send className="w-4 h-4" /></button>
+                          <button type="button" onClick={() => setEditingItem(null)} className="text-red-400 bg-slate-800 p-2 sm:p-1 hover:bg-slate-700 rounded"><X className="w-4 h-4" /></button>
+                        </div>
                       </form>
                     ) : (
                       <>
@@ -322,10 +329,10 @@
                           <span className="font-medium text-slate-300 flex items-center gap-1">{USER_EMOJIS[c.nickname]} {c.nickname}</span>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-slate-500">{formatKSTDate(c.createdAt)}</span>
-                            <button onClick={() => setEditingItem({ id: c.id, type: 'comment', form: { comment: appLang === 'ko' ? c.commentKo : c.commentJp } })} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 transition-opacity"><Edit2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => setEditingItem({ id: c.id, type: 'comment', form: { nickname: c.nickname, comment: appLang === 'ko' ? c.commentKo : c.commentJp } })} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 transition-opacity"><Edit2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </div>
-                        <p className="text-slate-200">{appLang === 'ko' ? c.commentKo : c.commentJp}</p>
+                        <p className="text-slate-200 break-words whitespace-pre-wrap">{appLang === 'ko' ? c.commentKo : c.commentJp}</p>
                       </>
                     )}
                   </div>
@@ -335,21 +342,22 @@
 
             <form onSubmit={(e) => {
               submitComment(e, commentForm, parentId, parentType).then(() => setCommentForm({...commentForm, comment: ''}));
-            }} className="flex gap-2">
+            }} className="flex flex-col sm:flex-row gap-2">
               <select 
                 value={commentForm.nickname} 
                 onChange={e => setCommentForm({...commentForm, nickname: e.target.value})}
-                className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 w-full sm:w-auto"
               >
                 {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
-              <input 
-                type="text" required placeholder={t.writeComment}
+              <textarea 
+                required placeholder={t.writeComment}
                 value={commentForm.comment}
                 onChange={e => setCommentForm({...commentForm, comment: e.target.value})}
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 resize-y min-h-[44px]"
+                rows="2"
               />
-              <button type="submit" disabled={isSubmitting} className="bg-slate-700 hover:bg-teal-500 hover:text-white px-3 py-2 rounded-lg transition-colors">
+              <button type="submit" disabled={isSubmitting} className="bg-slate-700 hover:bg-teal-500 hover:text-white px-3 py-2 rounded-lg transition-colors flex justify-center items-center w-full sm:w-auto">
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
             </form>
@@ -362,25 +370,25 @@
         return (
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl mb-8">
             <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2"><Film className="w-5 h-5 text-teal-400" />새 리뷰 작성</h2>
-            <form onSubmit={e => submitReview(e, form).then(() => setForm({...form, movieTitle: '', comment: ''}))} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="block text-xs text-slate-400 mb-1">{t.nickname}</label>
-                    <select value={form.nickname} onChange={e => setForm({...form, nickname: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500">
-                      {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs text-slate-400 mb-1">{t.date}</label>
-                    <input type="date" required value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 [color-scheme:dark]" />
-                  </div>
+            <form onSubmit={e => submitReview(e, form).then(() => setForm({...form, movieTitle: '', comment: ''}))} className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-400 mb-1">{t.nickname}</label>
+                  <select value={form.nickname} onChange={e => setForm({...form, nickname: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500">
+                    {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
                 </div>
-                <div>
+                <div className="flex-1">
+                  <label className="block text-xs text-slate-400 mb-1">{t.date}</label>
+                  <input type="date" required value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 [color-scheme:dark]" />
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
                   <label className="block text-xs text-slate-400 mb-1">{t.movieTitle}</label>
                   <input type="text" required value={form.movieTitle} onChange={e => setForm({...form, movieTitle: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <label className="block text-xs text-slate-400 mb-1 flex justify-between"><span>{t.rating}</span><span className="text-teal-400">{form.rating}</span></label>
                   <input type="range" min="0.5" max="5" step="0.5" value={form.rating} onChange={e => setForm({...form, rating: e.target.value})} className="w-full accent-teal-500 mb-2" />
                   <div className="flex justify-center bg-slate-800/40 py-1.5 rounded-lg">{renderStars(parseFloat(form.rating))}</div>
@@ -389,8 +397,9 @@
               <div className="flex flex-col">
                 <label className="block text-xs text-slate-400 mb-1">{t.comment}</label>
                 <p className="text-[10px] text-teal-400/80 mb-2">{t.commentDesc}</p>
-                <textarea required placeholder={t.placeholderReview} value={form.comment} onChange={e => setForm({...form, comment: e.target.value})} className="flex-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none mb-3" />
-                <button type="submit" disabled={isSubmitting} className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-2.5 rounded-lg flex justify-center items-center gap-2">
+                {/* 텍스트창 크기 확대 (rows 5, min-h 120px) */}
+                <textarea required placeholder={t.placeholderReview} value={form.comment} onChange={e => setForm({...form, comment: e.target.value})} className="flex-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 resize-y min-h-[120px] mb-3" rows="5" />
+                <button type="submit" disabled={isSubmitting} className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-3 rounded-lg flex justify-center items-center gap-2">
                   {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</> : <><Send className="w-4 h-4" /> {t.submit}</>}
                 </button>
               </div>
@@ -405,14 +414,15 @@
           <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 mb-6">
             <h3 className="font-semibold text-white mb-3">{t.writePost}</h3>
             <form onSubmit={e => submitPost(e, form, type).then(() => setForm({...form, title: '', content: ''}))} className="space-y-3">
-              <div className="flex gap-3">
-                <select value={form.nickname} onChange={e => setForm({...form, nickname: e.target.value})} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <select value={form.nickname} onChange={e => setForm({...form, nickname: e.target.value})} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white w-full sm:w-auto">
                   {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
                 <input type="text" required placeholder={t.postTitle} value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
               </div>
-              <textarea required placeholder={t.postContent} rows="3" value={form.content} onChange={e => setForm({...form, content: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white resize-none" />
-              <button type="submit" disabled={isSubmitting} className="bg-teal-500 text-slate-950 font-bold py-2 px-4 rounded-lg w-full text-sm flex justify-center items-center gap-2">
+              {/* 게시글 내용 입력창 크기 확대 */}
+              <textarea required placeholder={t.postContent} rows="5" value={form.content} onChange={e => setForm({...form, content: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-3 text-sm text-white min-h-[120px] resize-y" />
+              <button type="submit" disabled={isSubmitting} className="bg-teal-500 text-slate-950 font-bold py-3 px-4 rounded-lg w-full text-sm flex justify-center items-center gap-2">
                 {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</> : t.submit}
               </button>
             </form>
@@ -440,7 +450,10 @@
                   <div key={r.id} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg relative group">
                     {editingItem?.id === r.id ? (
                       <form onSubmit={handleEditSave} className="space-y-3 mb-4">
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <select required value={editingItem.form.nickname} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, nickname: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400 w-full sm:w-auto">
+                            {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
+                          </select>
                           <input type="date" required value={editingItem.form.date} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, date: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
                           <input type="text" required value={editingItem.form.movieTitle} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, movieTitle: e.target.value } })} className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
                         </div>
@@ -449,7 +462,8 @@
                            <input type="range" min="0.5" max="5" step="0.5" value={editingItem.form.rating} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, rating: e.target.value } })} className="flex-1 accent-teal-500" />
                            <div className="flex justify-center">{renderStars(parseFloat(editingItem.form.rating))}</div>
                         </div>
-                        <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-none focus:border-teal-400" rows="3" />
+                        {/* 수정 시에도 텍스트창 크게 유지 */}
+                        <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-y min-h-[120px] focus:border-teal-400" rows="5" />
                         <div className="flex justify-end gap-2">
                           <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-1.5 text-sm bg-slate-700 rounded hover:bg-slate-600 transition-colors">{t.cancel}</button>
                           <button type="submit" disabled={isSubmitting} className="px-4 py-1.5 text-sm bg-teal-500 text-slate-900 font-bold rounded hover:bg-teal-400 transition-colors">{t.save}</button>
@@ -457,21 +471,21 @@
                       </form>
                     ) : (
                       <>
-                        <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { date: r.date, movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp } })} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
-                        <div className="flex justify-between items-start mb-3 pr-8">
-                          <div>
-                            <h3 className="text-lg font-bold text-white mb-1">{r.movieTitle}</h3>
-                            <div className="flex gap-2 text-xs text-slate-400">
-                              <span className="bg-slate-800 px-2 py-0.5 rounded flex items-center gap-1">{USER_EMOJIS[r.nickname]} {r.nickname}</span>
-                              <span>{r.date} (Week {r.week}) · 작성일: {formatKSTDate(r.createdAt)}</span>
+                        <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { nickname: r.nickname, date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp } })} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
+                        <div className="flex flex-col sm:flex-row justify-between items-start mb-3 sm:pr-8 gap-3">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-lg font-bold text-white mb-1 break-words">{r.movieTitle}</h3>
+                            <div className="flex flex-wrap gap-2 text-xs text-slate-400">
+                              <span className="bg-slate-800 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">{USER_EMOJIS[r.nickname]} {r.nickname}</span>
+                              <span className="shrink-0">{formatDateOnly(r.date)} (Week {r.week}) · 작성일: {formatKSTDate(r.createdAt)}</span>
                             </div>
                           </div>
-                          <div className="bg-slate-800/80 px-2 py-1 rounded-lg text-center">
+                          <div className="bg-slate-800/80 px-2 py-1 rounded-lg text-center shrink-0 self-start">
                             <div className="text-lg font-bold text-yellow-400 leading-none mb-1">{r.rating}</div>
                             {renderStars(r.rating)}
                           </div>
                         </div>
-                        <p className="text-slate-300 text-sm mt-3 whitespace-pre-wrap">{appLang === 'ko' ? r.commentKo : r.commentJp}</p>
+                        <p className="text-slate-300 text-sm mt-3 whitespace-pre-wrap break-words">{appLang === 'ko' ? r.commentKo : r.commentJp}</p>
                       </>
                     )}
                     <CommentSection parentId={r.id} parentType="review" />
@@ -492,8 +506,13 @@
               
               {editingItem?.id === p.id ? (
                 <form onSubmit={handleEditSave} className="space-y-3 mb-6">
-                   <input type="text" required value={editingItem.form.title} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, title: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:border-teal-400" />
-                   <textarea required value={editingItem.form.content} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, content: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white min-h-[100px] resize-none focus:border-teal-400" />
+                   <div className="flex flex-col sm:flex-row gap-2">
+                     <select required value={editingItem.form.nickname} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, nickname: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:border-teal-400 w-full sm:w-auto">
+                       {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
+                     </select>
+                     <input type="text" required value={editingItem.form.title} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, title: e.target.value } })} className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:border-teal-400" />
+                   </div>
+                   <textarea required value={editingItem.form.content} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, content: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white min-h-[150px] resize-y focus:border-teal-400" rows="6" />
                    <div className="flex justify-end gap-2">
                      <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-1.5 text-sm bg-slate-700 rounded hover:bg-slate-600 transition-colors">{t.cancel}</button>
                      <button type="submit" disabled={isSubmitting} className="px-4 py-1.5 text-sm bg-teal-500 text-slate-900 font-bold rounded hover:bg-teal-400 transition-colors">{t.save}</button>
@@ -501,13 +520,13 @@
                 </form>
               ) : (
                 <>
-                  <button onClick={() => setEditingItem({ id: p.id, type: 'post', form: { title: appLang === 'ko' ? p.titleKo : p.titleJp, content: appLang === 'ko' ? p.contentKo : p.contentJp } })} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
-                  <h2 className="text-2xl font-bold text-white mb-2 pr-8">{appLang === 'ko' ? p.titleKo : p.titleJp}</h2>
-                  <div className="text-sm text-slate-400 mb-6 flex gap-3 items-center">
+                  <button onClick={() => setEditingItem({ id: p.id, type: 'post', form: { nickname: p.nickname, title: appLang === 'ko' ? p.titleKo : p.titleJp, content: appLang === 'ko' ? p.contentKo : p.contentJp } })} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 pr-8 break-words">{appLang === 'ko' ? p.titleKo : p.titleJp}</h2>
+                  <div className="text-sm text-slate-400 mb-6 flex flex-wrap gap-3 items-center">
                     <span className="flex items-center gap-1">{USER_EMOJIS[p.nickname]} {p.nickname}</span>
                     <span>{formatKSTDate(p.createdAt)}</span>
                   </div>
-                  <div className="text-slate-200 whitespace-pre-wrap min-h-[100px] mb-8">{appLang === 'ko' ? p.contentKo : p.contentJp}</div>
+                  <div className="text-slate-200 whitespace-pre-wrap min-h-[100px] mb-8 break-words">{appLang === 'ko' ? p.contentKo : p.contentJp}</div>
                 </>
               )}
               <CommentSection parentId={p.id} parentType="post" />
@@ -526,13 +545,13 @@
                 filteredPosts.map(p => {
                   const commentCount = appData.comments.filter(c => c.parentId === p.id).length;
                   return (
-                    <div key={p.id} onClick={() => setSelectedPost(p)} className="bg-slate-900 border border-slate-800 p-4 rounded-xl cursor-pointer hover:border-teal-500 transition-colors flex justify-between items-center group">
-                      <div>
-                        <h4 className="text-slate-200 font-medium group-hover:text-teal-400 transition-colors">{appLang === 'ko' ? p.titleKo : p.titleJp}</h4>
-                        <span className="text-xs text-slate-500 mt-1 block flex items-center gap-1">{USER_EMOJIS[p.nickname]} {p.nickname} · {formatKSTDate(p.createdAt)}</span>
+                    <div key={p.id} onClick={() => setSelectedPost(p)} className="bg-slate-900 border border-slate-800 p-4 rounded-xl cursor-pointer hover:border-teal-500 transition-colors flex justify-between items-center group gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-slate-200 font-medium group-hover:text-teal-400 transition-colors truncate">{appLang === 'ko' ? p.titleKo : p.titleJp}</h4>
+                        <span className="text-xs text-slate-500 mt-1 flex items-center gap-1 truncate">{USER_EMOJIS[p.nickname]} {p.nickname} · {formatKSTDate(p.createdAt)}</span>
                       </div>
                       {commentCount > 0 && (
-                        <span className="flex items-center gap-1 text-xs bg-slate-800 text-teal-400 px-2 py-1 rounded-full"><MessageSquare className="w-3 h-3"/> {commentCount}</span>
+                        <span className="flex items-center gap-1 text-xs bg-slate-800 text-teal-400 px-2 py-1 rounded-full shrink-0"><MessageSquare className="w-3 h-3"/> {commentCount}</span>
                       )}
                     </div>
                   );
@@ -557,7 +576,10 @@
                   <div key={r.id} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg relative group">
                     {editingItem?.id === r.id ? (
                       <form onSubmit={handleEditSave} className="space-y-3 mb-4">
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <select required value={editingItem.form.nickname} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, nickname: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400 w-full sm:w-auto">
+                            {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
+                          </select>
                           <input type="date" required value={editingItem.form.date} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, date: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
                           <input type="text" required value={editingItem.form.movieTitle} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, movieTitle: e.target.value } })} className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
                         </div>
@@ -566,7 +588,8 @@
                            <input type="range" min="0.5" max="5" step="0.5" value={editingItem.form.rating} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, rating: e.target.value } })} className="flex-1 accent-teal-500" />
                            <div className="flex justify-center">{renderStars(parseFloat(editingItem.form.rating))}</div>
                         </div>
-                        <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-none focus:border-teal-400" rows="3" />
+                        {/* 수정 시에도 텍스트창 크게 유지 */}
+                        <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-y min-h-[120px] focus:border-teal-400" rows="5" />
                         <div className="flex justify-end gap-2">
                           <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-1.5 text-sm bg-slate-700 rounded hover:bg-slate-600 transition-colors">{t.cancel}</button>
                           <button type="submit" disabled={isSubmitting} className="px-4 py-1.5 text-sm bg-teal-500 text-slate-900 font-bold rounded hover:bg-teal-400 transition-colors">{t.save}</button>
@@ -574,21 +597,21 @@
                       </form>
                     ) : (
                       <>
-                        <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { date: r.date, movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp } })} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
-                        <div className="flex justify-between items-start mb-3 pr-8">
-                          <div>
-                            <h3 className="text-lg font-bold text-white mb-1">{r.movieTitle}</h3>
-                            <div className="flex gap-2 text-xs text-slate-400">
-                              <span className="bg-slate-800 px-2 py-0.5 rounded flex items-center gap-1">{USER_EMOJIS[r.nickname]} {r.nickname}</span>
-                              <span>{r.date} (Week {r.week}) · 작성일: {formatKSTDate(r.createdAt)}</span>
+                        <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { nickname: r.nickname, date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp } })} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-400 p-1 transition-opacity"><Edit2 className="w-4 h-4" /></button>
+                        <div className="flex flex-col sm:flex-row justify-between items-start mb-3 sm:pr-8 gap-3">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-lg font-bold text-white mb-1 break-words">{r.movieTitle}</h3>
+                            <div className="flex flex-wrap gap-2 text-xs text-slate-400">
+                              <span className="bg-slate-800 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">{USER_EMOJIS[r.nickname]} {r.nickname}</span>
+                              <span className="shrink-0">{formatDateOnly(r.date)} (Week {r.week}) · 작성일: {formatKSTDate(r.createdAt)}</span>
                             </div>
                           </div>
-                          <div className="bg-slate-800/80 px-2 py-1 rounded-lg text-center">
+                          <div className="bg-slate-800/80 px-2 py-1 rounded-lg text-center shrink-0 self-start">
                             <div className="text-lg font-bold text-yellow-400 leading-none mb-1">{r.rating}</div>
                             {renderStars(r.rating)}
                           </div>
                         </div>
-                        <p className="text-slate-300 text-sm mt-3 whitespace-pre-wrap">{appLang === 'ko' ? r.commentKo : r.commentJp}</p>
+                        <p className="text-slate-300 text-sm mt-3 whitespace-pre-wrap break-words">{appLang === 'ko' ? r.commentKo : r.commentJp}</p>
                       </>
                     )}
                     <CommentSection parentId={r.id} parentType="review" />
@@ -631,7 +654,7 @@
                   <Globe className="w-3.5 h-3.5 text-teal-400" /> {t.toggleLang}
                 </button>
               </div>
-              <div className="flex gap-1 overflow-x-auto no-scrollbar">
+              <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
                 {[
                   { id: 'summary', icon: ClipboardList, label: t.navSummary },
                   { id: 'notice', icon: Megaphone, label: t.navNotice },
