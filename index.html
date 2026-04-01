@@ -137,8 +137,15 @@
     };
 
     const formatDateOnly = (dateString) => {
-      if (!dateString) return '';
-      return dateString.split('T')[0];
+     if (!dateString) return '';
+  
+     const d = new Date(dateString);
+     // 날짜 형식이 아니면 기존 방식 유지
+     if (isNaN(d.getTime())) return dateString.split('T')[0]; 
+  
+     // 한국 표준시(UTC+9) 기준으로 9시간을 더해 보정
+     const kst = new Date(d.getTime() + (9 * 60 * 60 * 1000));
+     return kst.toISOString().split('T')[0];
     };
 
     const formatKSTDate = (isoString) => {
