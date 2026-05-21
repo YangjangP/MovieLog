@@ -180,14 +180,31 @@
         const spoilerText = match[1];
 
         parts.push(
-          <button
+          <span
             key={`spoiler-${key}`}
-            type="button"
+            role="button"
+            tabIndex="0"
             onClick={(e) => {
               e.stopPropagation();
               setRevealed(prev => ({ ...prev, [key]: true }));
             }}
-            className={`inline align-baseline mx-0.5 px-1.5 py-0.5 rounded-md border transition-colors cursor-pointer select-none ${
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                setRevealed(prev => ({ ...prev, [key]: true }));
+              }
+            }}
+            style={{
+              display: 'inline-block',
+              maxWidth: '100%',
+              textAlign: 'left',
+              whiteSpace: 'pre-wrap',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              verticalAlign: 'baseline'
+            }}
+            className={`align-baseline mx-0.5 px-1.5 py-0.5 rounded-md border transition-colors cursor-pointer select-none ${
               isOpen
                 ? 'bg-slate-800/80 border-teal-400/40 text-slate-100'
                 : 'bg-slate-700 border-slate-600 text-transparent hover:bg-slate-600'
@@ -196,7 +213,7 @@
             title={isOpen ? '' : '클릭해서 스포일러 보기'}
           >
             {spoilerText}
-          </button>
+          </span>
         );
 
         lastIndex = regex.lastIndex;
@@ -206,7 +223,7 @@
         parts.push(text.slice(lastIndex));
       }
 
-      return <span className={className}>{parts}</span>;
+      return <span className={className} style={{ display: 'block', width: '100%', textAlign: 'left' }}>{parts}</span>;
     };
 
     function App() {
@@ -438,7 +455,7 @@
                           <button onClick={() => setEditingItem({ id: c.id, type: 'comment', form: { nickname: c.nickname, comment: appLang === 'ko' ? c.commentKo : c.commentJp } })} className="text-slate-400 hover:text-teal-400 transition-colors p-1"><Edit2 className="w-3.5 h-3.5" /></button>
                           <button onClick={() => requestDelete(c.id, 'comment')} className="text-slate-400 hover:text-red-400 transition-colors p-1"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
-                        <SpoilerText text={appLang === 'ko' ? c.commentKo : c.commentJp} className="block text-slate-200 break-words whitespace-pre-wrap" />
+                        <SpoilerText text={appLang === 'ko' ? c.commentKo : c.commentJp} className="block text-left text-slate-200 break-words whitespace-pre-wrap" />
                       </>
                     )}
                   </div>
@@ -616,7 +633,7 @@
                             {renderStars(r.rating)}
                           </div>
                         </div>
-                        <SpoilerText text={appLang === 'ko' ? r.commentKo : r.commentJp} className="block text-slate-300 text-sm mt-3 whitespace-pre-wrap break-words" />
+                        <SpoilerText text={appLang === 'ko' ? r.commentKo : r.commentJp} className="block text-left text-slate-300 text-sm mt-3 whitespace-pre-wrap break-words" />
                       </>
                     )}
                     <CommentSection parentId={r.id} parentType="review" />
@@ -660,7 +677,7 @@
                     <span className="flex items-center gap-1">{USER_EMOJIS[p.nickname]} {p.nickname}</span>
                     <span>{formatKSTDate(p.createdAt)}</span>
                   </div>
-                  <SpoilerText text={appLang === 'ko' ? p.contentKo : p.contentJp} className="block text-slate-200 whitespace-pre-wrap min-h-[100px] mb-8 break-words" />
+                  <SpoilerText text={appLang === 'ko' ? p.contentKo : p.contentJp} className="block text-left text-slate-200 whitespace-pre-wrap min-h-[100px] mb-8 break-words" />
                 </>
               )}
               <CommentSection parentId={p.id} parentType="post" />
@@ -748,7 +765,7 @@
                             {renderStars(r.rating)}
                           </div>
                         </div>
-                        <SpoilerText text={appLang === 'ko' ? r.commentKo : r.commentJp} className="block text-slate-300 text-sm mt-3 whitespace-pre-wrap break-words" />
+                        <SpoilerText text={appLang === 'ko' ? r.commentKo : r.commentJp} className="block text-left text-slate-300 text-sm mt-3 whitespace-pre-wrap break-words" />
                       </>
                     )}
                     <CommentSection parentId={r.id} parentType="review" />
