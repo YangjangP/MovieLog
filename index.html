@@ -126,7 +126,7 @@
       'N': '🐶',
       'YUNJO': '🏃‍♀️‍➡️',
       'Dagari': '🐥',
-      'Zen': '🐾'
+      'Zen': '🦴'
     };
     const START_DATE = new Date('2025-11-24T00:00:00Z');
 
@@ -420,11 +420,15 @@
       };
 
       const CommentSection = ({ parentId, parentType }) => {
-        const [commentForm, setCommentForm] = useState({ nickname: NICKNAMES[0], comment: '' });
-        const targetComments = appData.comments.filter(c => c.parentId === parentId);
+      const [commentForm, setCommentForm] = useState({ nickname: NICKNAMES[0], comment: '' });
+      
+      // 최신 댓글이 목록의 아래쪽으로 가도록 작성 시간 순(오래된 순 -> 최신 순)으로 정렬합니다.
+      const targetComments = appData.comments
+        .filter(c => c.parentId === parentId)
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-        return (
-          <div className="mt-4 pt-4 border-t border-slate-700/50">
+      return (
+        <div className="mt-4 pt-4 border-t border-slate-700/50">
             <h4 className="text-sm font-semibold flex items-center gap-1.5 text-teal-400 mb-3">
               <MessageSquare className="w-4 h-4" /> {t.comments} ({targetComments.length})
             </h4>
