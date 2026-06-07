@@ -242,13 +242,24 @@
       const todayStr = formatKSTDate(new Date().toISOString());
       const currentWeekNum = calculateWeek(todayStr);
       
-      // 위크 선택용 State (기본값: 이번 주)
       const [selectedWeek, setSelectedWeek] = useState(currentWeekNum);
 
       const t = UI_STRINGS[appLang];
 
       const fetchData = async () => {
-        setIsLoading(true);
+        // ✨ [속도 개선] LocalStorage에서 캐시된 데이터 먼저 가져오기 ✨
+        const cachedData = localStorage.getItem('movieLogData');
+        if (cachedData) {
+          try {
+            setAppData(JSON.parse(cachedData));
+            setIsLoading(false); // 캐시가 있으면 로딩 화면 즉시 제거!
+          } catch (e) {
+            console.error("Cache parsing error", e);
+          }
+        } else {
+          setIsLoading(true); // 캐시가 아예 없을 때만 처음 로딩을 띄움
+        }
+
         try {
           const fetchUrl = SCRIPT_URL + "?t=" + new Date().getTime();
           const response = await fetch(fetchUrl, { cache: 'no-store' });
@@ -273,16 +284,31 @@
             createdAt: item.CreatedAt || item.createdAt
           }));
 
-          setAppData({
+          const freshData = {
             reviews: normalize(data.reviews),
             posts: normalize(data.posts),
             comments: normalize(data.comments)
-          });
+          };
+
+          setAppData(freshData);
+          
+          // ✨ 가져온 최신 데이터를 LocalStorage에 다시 캐싱 ✨
+          localStorage.setItem('movieLogData', JSON.stringify(freshData));
+          
         } catch (error) {
           console.error("Error fetching data:", error);
         } finally {
           setIsLoading(false);
         }
+      };
+
+      // 데이터가 수정될 때마다 캐시(LocalStorage)도 함께 업데이트 해주는 함수
+      const updateDataAndCache = (updater) => {
+        setAppData((prev) => {
+          const newData = updater(prev);
+          localStorage.setItem('movieLogData', JSON.stringify(newData));
+          return newData;
+        });
       };
 
       useEffect(() => {
@@ -311,7 +337,7 @@
             createdAt: new Date().toISOString()
           };
           await postDataToSheet('addReview', newReview);
-          setAppData(prev => ({ ...prev, reviews: [newReview, ...prev.reviews] }));
+          updateDataAndCache(prev => ({ ...prev, reviews: [newReview, ...prev.reviews] }));
         } finally { setIsSubmitting(false); }
       };
 
@@ -326,7 +352,7 @@
             createdAt: new Date().toISOString()
           };
           await postDataToSheet('addPost', newPost);
-          setAppData(prev => ({ ...prev, posts: [newPost, ...prev.posts] }));
+          updateDataAndCache(prev => ({ ...prev, posts: [newPost, ...prev.posts] }));
         } finally { setIsSubmitting(false); }
       };
 
@@ -340,7 +366,7 @@
             createdAt: new Date().toISOString()
           };
           await postDataToSheet('addComment', newComment);
-          setAppData(prev => ({ ...prev, comments: [...prev.comments, newComment] }));
+          updateDataAndCache(prev => ({ ...prev, comments: [...prev.comments, newComment] }));
         } finally { setIsSubmitting(false); }
       };
 
@@ -354,16 +380,16 @@
             const week = calculateWeek(form.date);
             const payload = { Nickname: form.nickname, Date: form.date, Week: week, MovieTitle: form.movieTitle, Rating: parseFloat(form.rating), Comment: form.comment };
             await postDataToSheet('editItem', { sheetName: 'Reviews', id, payload });
-            setAppData(prev => ({ ...prev, reviews: prev.reviews.map(r => r.id === id ? { ...r, nickname: form.nickname, date: form.date, week, movieTitle: form.movieTitle, rating: payload.Rating, commentKo: form.comment, commentJp: form.comment } : r) }));
+            updateDataAndCache(prev => ({ ...prev, reviews: prev.reviews.map(r => r.id === id ? { ...r, nickname: form.nickname, date: form.date, week, movieTitle: form.movieTitle, rating: payload.Rating, commentKo: form.comment, commentJp: form.comment } : r) }));
           } else if (type === 'post') {
             const payload = { Nickname: form.nickname, Title: form.title, Content: form.content };
             await postDataToSheet('editItem', { sheetName: 'Posts', id, payload });
-            setAppData(prev => ({ ...prev, posts: prev.posts.map(p => p.id === id ? { ...p, nickname: form.nickname, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content } : p) }));
+            updateDataAndCache(prev => ({ ...prev, posts: prev.posts.map(p => p.id === id ? { ...p, nickname: form.nickname, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content } : p) }));
             if (selectedPost && selectedPost.id === id) setSelectedPost(prev => ({ ...prev, nickname: form.nickname, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content }));
           } else if (type === 'comment') {
             const payload = { Nickname: form.nickname, Comment: form.comment };
             await postDataToSheet('editItem', { sheetName: 'Comments', id, payload });
-            setAppData(prev => ({ ...prev, comments: prev.comments.map(c => c.id === id ? { ...c, nickname: form.nickname, commentKo: form.comment, commentJp: form.comment } : c) }));
+            updateDataAndCache(prev => ({ ...prev, comments: prev.comments.map(c => c.id === id ? { ...c, nickname: form.nickname, commentKo: form.comment, commentJp: form.comment } : c) }));
           }
           setEditingItem(null);
         } finally {
@@ -371,7 +397,6 @@
         }
       };
 
-      // ✨ 삭제 모달 띄우기 ✨
       const requestDelete = (id, type) => {
         setItemToDelete({ id, type });
       };
@@ -391,14 +416,14 @@
           await postDataToSheet('deleteItem', { sheetName, id });
 
           if (type === 'review') {
-            setAppData(prev => ({ ...prev, reviews: prev.reviews.filter(r => r.id !== id) }));
+            updateDataAndCache(prev => ({ ...prev, reviews: prev.reviews.filter(r => r.id !== id) }));
           } else if (type === 'post') {
-            setAppData(prev => ({ ...prev, posts: prev.posts.filter(p => p.id !== id) }));
+            updateDataAndCache(prev => ({ ...prev, posts: prev.posts.filter(p => p.id !== id) }));
             if (selectedPost && selectedPost.id === id) setSelectedPost(null);
           } else if (type === 'comment') {
-            setAppData(prev => ({ ...prev, comments: prev.comments.filter(c => c.id !== id) }));
+            updateDataAndCache(prev => ({ ...prev, comments: prev.comments.filter(c => c.id !== id) }));
           }
-          setItemToDelete(null); // 모달 닫기
+          setItemToDelete(null);
         } catch (error) {
           console.error("Error deleting item:", error);
           alert("삭제 중 오류가 발생했습니다.");
