@@ -11,7 +11,8 @@
   <!-- React & Babel (화면 및 기능 구동) -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- 안정적인 Babel 버전으로 고정하여 컴파일 오류 방지 -->
+  <script src="https://unpkg.com/@babel/standalone@7.24.4/babel.min.js"></script>
 </head>
 <body class="bg-slate-950 text-slate-200 font-sans selection:bg-teal-500 selection:text-white pb-20">
   
@@ -20,6 +21,9 @@
 
   <!-- 여기서부터 우리 사이트의 기능 코드입니다 -->
   <script type="text/babel">
+    /* @jsx React.createElement */
+    /* @jsxFrag React.Fragment */
+    
     const { useState, useEffect } = React;
 
     // --- 아이콘 세팅 (Lucide 아이콘을 HTML 안에 직접 내장) ---
@@ -592,7 +596,7 @@
             <ReviewForm />
             
             {/* Week 선택 영역 */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 mt-8">
               <div className="flex items-center gap-2">
                 <CalendarDays className="w-6 h-6 text-teal-400" />
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
