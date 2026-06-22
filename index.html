@@ -87,8 +87,20 @@
         no: "아니오",
         viewDefault: "전체 보기",
         viewCompact: "별점 모아보기",
+        viewCalendar: "캘린더 보기",
         sortDesc: "별점 높은 순",
-        sortAsc: "별점 낮은 순"
+        sortAsc: "별점 낮은 순",
+        previousMonth: "이전 달",
+        nextMonth: "다음 달",
+        goToday: "이번 달",
+        addPoster: "포스터 추가",
+        editPoster: "포스터 변경",
+        posterUrl: "포스터 이미지 주소",
+        imageSearch: "Google 이미지에서 찾기",
+        removePoster: "포스터 삭제",
+        posterGuide: "검색 결과에서 사용할 이미지의 주소를 복사해 붙여넣어 주세요.",
+        posterLocalOnly: "포스터 주소는 Reviews 시트의 PosterUrl 열에 저장되어 다른 기기에서도 공유됩니다.",
+        posterPreview: "포스터 미리보기"
       },
       jp: {
         title: "Movie Log",
@@ -125,8 +137,20 @@
         no: "いいえ",
         viewDefault: "全体表示",
         viewCompact: "評価順表示",
+        viewCalendar: "カレンダー表示",
         sortDesc: "評価が高い順",
-        sortAsc: "評価が低い順"
+        sortAsc: "評価が低い順",
+        previousMonth: "前の月",
+        nextMonth: "次の月",
+        goToday: "今月",
+        addPoster: "ポスター追加",
+        editPoster: "ポスター変更",
+        posterUrl: "ポスター画像URL",
+        imageSearch: "Google画像で探す",
+        removePoster: "ポスター削除",
+        posterGuide: "検索結果から使用する画像のURLをコピーして貼り付けてください。",
+        posterLocalOnly: "ポスターURLはReviewsシートのPosterUrl列に保存され、ほかの端末でも共有されます。",
+        posterPreview: "ポスターのプレビュー"
       }
     };
 
@@ -250,6 +274,19 @@
       const [userViewMode, setUserViewMode] = useState('default');
       const [ratingSortOrder, setRatingSortOrder] = useState('desc');
       const [expandedReviews, setExpandedReviews] = useState({});
+      const [calendarCursor, setCalendarCursor] = useState(() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), 1);
+      });
+      const [posterMap, setPosterMap] = useState(() => {
+        try {
+          return JSON.parse(localStorage.getItem('movieLogPosterMap') || '{}');
+        } catch (e) {
+          return {};
+        }
+      });
+      const [posterTarget, setPosterTarget] = useState(null);
+      const [posterDraft, setPosterDraft] = useState('');
       
       const todayStr = formatKSTDate(new Date().toISOString());
       const currentWeekNum = calculateWeek(todayStr);
@@ -257,6 +294,85 @@
       const [selectedWeek, setSelectedWeek] = useState(currentWeekNum);
 
       const t = UI_STRINGS[appLang];
+
+      const getPosterUrl = (review) => review?.posterUrl || posterMap[review?.id] || '';
+
+      const openPosterEditor = (review) => {
+        setPosterTarget(review);
+        setPosterDraft(getPosterUrl(review));
+      };
+
+      const savePosterUrl = async (e) => {
+        e.preventDefault();
+        if (!posterTarget || isSubmitting) return;
+
+        const nextUrl = posterDraft.trim();
+        setIsSubmitting(true);
+        try {
+          await postDataToSheet('editItem', {
+            sheetName: 'Reviews',
+            id: posterTarget.id,
+            payload: { PosterUrl: nextUrl }
+          });
+
+          updateDataAndCache(prev => ({
+            ...prev,
+            reviews: prev.reviews.map(review =>
+              review.id === posterTarget.id ? { ...review, posterUrl: nextUrl } : review
+            )
+          }));
+
+          // 이전 버전에서 브라우저에만 저장했던 값이 다시 나타나지 않도록 정리합니다.
+          const nextMap = { ...posterMap };
+          delete nextMap[posterTarget.id];
+          setPosterMap(nextMap);
+          localStorage.setItem('movieLogPosterMap', JSON.stringify(nextMap));
+          setPosterTarget(null);
+          setPosterDraft('');
+        } catch (error) {
+          console.error('Error saving poster URL:', error);
+          alert(appLang === 'ko' ? '포스터 저장 중 오류가 발생했습니다.' : 'ポスターの保存中にエラーが発生しました。');
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
+
+      const removePosterUrl = async () => {
+        if (!posterTarget || isSubmitting) return;
+
+        setIsSubmitting(true);
+        try {
+          await postDataToSheet('editItem', {
+            sheetName: 'Reviews',
+            id: posterTarget.id,
+            payload: { PosterUrl: '' }
+          });
+
+          updateDataAndCache(prev => ({
+            ...prev,
+            reviews: prev.reviews.map(review =>
+              review.id === posterTarget.id ? { ...review, posterUrl: '' } : review
+            )
+          }));
+
+          const nextMap = { ...posterMap };
+          delete nextMap[posterTarget.id];
+          setPosterMap(nextMap);
+          localStorage.setItem('movieLogPosterMap', JSON.stringify(nextMap));
+          setPosterTarget(null);
+          setPosterDraft('');
+        } catch (error) {
+          console.error('Error removing poster URL:', error);
+          alert(appLang === 'ko' ? '포스터 삭제 중 오류가 발생했습니다.' : 'ポスターの削除中にエラーが発生しました。');
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
+
+      const openGoogleImageSearch = (movieTitle) => {
+        const query = encodeURIComponent(`${movieTitle} 영화 포스터`);
+        window.open(`https://www.google.com/search?tbm=isch&q=${query}`, '_blank', 'noopener,noreferrer');
+      };
 
       const fetchData = async () => {
         const cachedData = localStorage.getItem('movieLogData');
@@ -286,6 +402,7 @@
             week: item.Week || item.week,
             movieTitle: item.MovieTitle || item.movieTitle,
             rating: item.Rating || item.rating,
+            posterUrl: item.PosterUrl || item.posterUrl || '',
             titleKo: item.TitleKo || item.titleKo,
             titleJp: item.TitleJp || item.titleJp,
             contentKo: item.ContentKo || item.contentKo,
@@ -340,8 +457,8 @@
           const newReview = {
             id: generateId(), nickname: formData.nickname, date: formData.date, week: week,
             movieTitle: formData.movieTitle, rating: parseFloat(formData.rating),
-            commentKo: formData.comment, commentJp: formData.comment, 
-            rawComment: formData.comment,
+            commentKo: formData.comment, commentJp: formData.comment,
+            rawComment: formData.comment, posterUrl: '', PosterUrl: '',
             createdAt: new Date().toISOString()
           };
           await postDataToSheet('addReview', newReview);
@@ -386,7 +503,16 @@
           
           if (type === 'review') {
             const week = calculateWeek(form.date);
-            const payload = { Nickname: form.nickname, Date: form.date, Week: week, MovieTitle: form.movieTitle, Rating: parseFloat(form.rating), Comment: form.comment };
+            const currentReview = appData.reviews.find(review => review.id === id);
+            const payload = {
+              Nickname: form.nickname,
+              Date: form.date,
+              Week: week,
+              MovieTitle: form.movieTitle,
+              Rating: parseFloat(form.rating),
+              Comment: form.comment,
+              PosterUrl: currentReview ? getPosterUrl(currentReview) : ''
+            };
             await postDataToSheet('editItem', { sheetName: 'Reviews', id, payload });
             updateDataAndCache(prev => ({ ...prev, reviews: prev.reviews.map(r => r.id === id ? { ...r, nickname: form.nickname, date: form.date, week, movieTitle: form.movieTitle, rating: payload.Rating, commentKo: form.comment, commentJp: form.comment } : r) }));
           } else if (type === 'post') {
@@ -756,6 +882,195 @@
         );
       };
 
+      const moveCalendarMonth = (amount) => {
+        setCalendarCursor(prev => new Date(prev.getFullYear(), prev.getMonth() + amount, 1));
+      };
+
+      const goToCurrentMonth = () => {
+        const now = new Date();
+        setCalendarCursor(new Date(now.getFullYear(), now.getMonth(), 1));
+      };
+
+      const openUserProfile = (name) => {
+        const reviews = appData.reviews
+          .filter(r => r.nickname === name && r.date)
+          .sort((a, b) => formatDateOnly(b.date).localeCompare(formatDateOnly(a.date)));
+
+        if (reviews.length > 0) {
+          const [year, month] = formatDateOnly(reviews[0].date).split('-').map(Number);
+          setCalendarCursor(new Date(year, month - 1, 1));
+        } else {
+          goToCurrentMonth();
+        }
+
+        setSelectedUser(name);
+        setUserViewMode('default');
+        setRatingSortOrder('desc');
+        setExpandedReviews({});
+      };
+
+      const renderUserCalendar = (userReviews) => {
+        const year = calendarCursor.getFullYear();
+        const month = calendarCursor.getMonth();
+        const firstWeekday = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPreviousMonth = new Date(year, month, 0).getDate();
+        const weekdayLabels = appLang === 'ko'
+          ? ['일', '월', '화', '수', '목', '금', '토']
+          : ['日', '月', '火', '水', '木', '金', '土'];
+        const monthLabel = new Intl.DateTimeFormat(appLang === 'ko' ? 'ko-KR' : 'ja-JP', {
+          year: 'numeric',
+          month: 'long'
+        }).format(calendarCursor);
+        const pad = value => String(value).padStart(2, '0');
+        const todayKey = formatDateOnly(new Date().toISOString());
+
+        const reviewsByDate = userReviews.reduce((acc, review) => {
+          const key = formatDateOnly(review.date);
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(review);
+          return acc;
+        }, {});
+
+        const cells = Array.from({ length: 42 }, (_, index) => {
+          const relativeDay = index - firstWeekday + 1;
+          let cellYear = year;
+          let cellMonth = month;
+          let day = relativeDay;
+          let isCurrentMonth = true;
+
+          if (relativeDay < 1) {
+            cellMonth = month - 1;
+            if (cellMonth < 0) {
+              cellMonth = 11;
+              cellYear -= 1;
+            }
+            day = daysInPreviousMonth + relativeDay;
+            isCurrentMonth = false;
+          } else if (relativeDay > daysInMonth) {
+            cellMonth = month + 1;
+            if (cellMonth > 11) {
+              cellMonth = 0;
+              cellYear += 1;
+            }
+            day = relativeDay - daysInMonth;
+            isCurrentMonth = false;
+          }
+
+          const dateKey = `${cellYear}-${pad(cellMonth + 1)}-${pad(day)}`;
+          return { day, dateKey, isCurrentMonth, reviews: reviewsByDate[dateKey] || [] };
+        });
+
+        return (
+          <div className="animate-in fade-in duration-300">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => moveCalendarMonth(-1)}
+                  className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 hover:border-teal-400 hover:text-teal-400 transition-colors"
+                  aria-label={t.previousMonth}
+                  title={t.previousMonth}
+                >
+                  ‹
+                </button>
+                <h3 className="min-w-[132px] text-center text-lg font-bold text-white">{monthLabel}</h3>
+                <button
+                  type="button"
+                  onClick={() => moveCalendarMonth(1)}
+                  className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 hover:border-teal-400 hover:text-teal-400 transition-colors"
+                  aria-label={t.nextMonth}
+                  title={t.nextMonth}
+                >
+                  ›
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={goToCurrentMonth}
+                className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:text-teal-400 hover:border-teal-400 transition-colors"
+              >
+                {t.goToday}
+              </button>
+            </div>
+
+            <div className="w-full overflow-hidden rounded-xl sm:rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl">
+              <div className="grid grid-cols-7 border-b border-slate-800 bg-slate-900">
+                {weekdayLabels.map((label, index) => (
+                  <div key={label} className={`min-w-0 py-1.5 sm:py-2 text-center text-[9px] sm:text-xs font-semibold ${index === 0 ? 'text-red-400' : index === 6 ? 'text-sky-400' : 'text-slate-400'}`}>
+                    {label}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7">
+                {cells.map((cell, index) => (
+                  <div
+                    key={cell.dateKey}
+                    className={`min-w-0 min-h-[98px] sm:min-h-[150px] lg:min-h-[188px] border-b border-r border-slate-800/80 p-0.5 sm:p-1.5 ${index % 7 === 6 ? 'border-r-0' : ''} ${index >= 35 ? 'border-b-0' : ''} ${cell.isCurrentMonth ? 'bg-slate-900/50' : 'bg-slate-950/45'}`}
+                  >
+                    <div className="flex justify-between items-center mb-0.5 sm:mb-1 px-0.5">
+                      <span className={`w-4 h-4 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[8px] sm:text-xs font-semibold ${cell.dateKey === todayKey ? 'bg-teal-500 text-slate-950' : cell.isCurrentMonth ? 'text-slate-300' : 'text-slate-600'}`}>
+                        {cell.day}
+                      </span>
+                      {cell.reviews.length > 1 && (
+                        <span className="text-[7px] sm:text-[10px] text-teal-400">+{cell.reviews.length - 1}</span>
+                      )}
+                    </div>
+
+                    <div className="space-y-0.5 sm:space-y-1">
+                      {cell.reviews.map(review => {
+                        const posterUrl = getPosterUrl(review);
+                        return (
+                          <button
+                            key={review.id}
+                            type="button"
+                            onClick={() => openPosterEditor(review)}
+                            className="relative block w-full min-w-0 aspect-[3/4] overflow-hidden rounded-[4px] sm:rounded-lg border border-slate-700/80 bg-slate-800 text-left hover:border-teal-400 hover:ring-1 hover:ring-teal-400/50 transition-all group"
+                            title={posterUrl ? t.editPoster : t.addPoster}
+                          >
+                            <span className="absolute inset-0 flex items-center justify-center bg-slate-800 text-slate-500 group-hover:text-teal-400 text-base sm:text-2xl">＋</span>
+                            {posterUrl && (
+                              <img
+                                src={posterUrl}
+                                alt={`${review.movieTitle} poster`}
+                                className="absolute inset-0 w-full h-full object-cover"
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                                onError={e => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            )}
+                            <span className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent px-0.5 pt-4 pb-0.5 sm:px-1.5 sm:pt-7 sm:pb-1.5">
+                              <span
+                                className="block text-[6px] sm:text-[9px] lg:text-[11px] leading-[1.05] sm:leading-tight font-semibold text-white break-words"
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden'
+                                }}
+                              >
+                                {review.movieTitle}
+                              </span>
+                              <span className="block mt-0.5 text-[7px] sm:text-[9px] lg:text-[10px] leading-none font-bold text-yellow-400">★ {review.rating}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
+              {appLang === 'ko'
+                ? '영화 항목을 누르면 포스터를 등록하거나 변경할 수 있습니다.'
+                : '映画の項目を押すと、ポスターを登録・変更できます。'}
+            </p>
+          </div>
+        );
+      };
+
       const renderUser = () => {
         if (selectedUser) {
           const userReviews = appData.reviews.filter(r => r.nickname === selectedUser);
@@ -767,16 +1082,17 @@
 
           return (
             <div className="animate-in slide-in-from-right-4">
-              <button onClick={() => { setSelectedUser(null); setExpandedReviews({}); }} className="text-teal-400 text-sm mb-4 hover:underline flex items-center gap-1">← {t.backToList}</button>
+              <button onClick={() => { setSelectedUser(null); setExpandedReviews({}); setPosterTarget(null); }} className="text-teal-400 text-sm mb-4 hover:underline flex items-center gap-1">← {t.backToList}</button>
               <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                 <span className="text-2xl">{USER_EMOJIS[selectedUser]}</span> {selectedUser}{t.userReviews} ({userReviews.length})
               </h2>
 
               {userReviews.length > 0 && (
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
-                  <div className="flex bg-slate-800 rounded-lg p-1 shrink-0 w-full sm:w-auto">
-                    <button onClick={() => { setUserViewMode('default'); setExpandedReviews({}); }} className={`flex-1 sm:flex-none px-4 py-1.5 text-sm rounded-md transition-colors ${userViewMode === 'default' ? 'bg-teal-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}>{t.viewDefault}</button>
-                    <button onClick={() => { setUserViewMode('compact'); setExpandedReviews({}); }} className={`flex-1 sm:flex-none px-4 py-1.5 text-sm rounded-md transition-colors ${userViewMode === 'compact' ? 'bg-teal-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}>{t.viewCompact}</button>
+                  <div className="flex bg-slate-800 rounded-lg p-1 shrink-0 w-full sm:w-auto overflow-x-auto">
+                    <button onClick={() => { setUserViewMode('default'); setExpandedReviews({}); }} className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm rounded-md transition-colors whitespace-nowrap ${userViewMode === 'default' ? 'bg-teal-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}>{t.viewDefault}</button>
+                    <button onClick={() => { setUserViewMode('compact'); setExpandedReviews({}); }} className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm rounded-md transition-colors whitespace-nowrap ${userViewMode === 'compact' ? 'bg-teal-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}>{t.viewCompact}</button>
+                    <button onClick={() => { setUserViewMode('calendar'); setExpandedReviews({}); }} className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm rounded-md transition-colors whitespace-nowrap ${userViewMode === 'calendar' ? 'bg-teal-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}>{t.viewCalendar}</button>
                   </div>
                   
                   {userViewMode === 'compact' && (
@@ -843,6 +1159,8 @@
                     </div>
                   ))}
                 </div>
+              ) : userViewMode === 'calendar' ? (
+                renderUserCalendar(userReviews)
               ) : (
                 /* ✨ 별점 모아보기 (Compact View) 화면 ✨ */
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in duration-300 items-start">
@@ -933,7 +1251,7 @@
             {NICKNAMES.map(name => {
               const count = appData.reviews.filter(r => r.nickname === name).length;
               return (
-                <div key={name} onClick={() => { setSelectedUser(name); setUserViewMode('default'); setRatingSortOrder('desc'); setExpandedReviews({}); }} className="bg-slate-900 border border-slate-800 hover:border-teal-500 p-6 rounded-2xl cursor-pointer text-center group transition-all">
+                <div key={name} onClick={() => openUserProfile(name)} className="bg-slate-900 border border-slate-800 hover:border-teal-500 p-6 rounded-2xl cursor-pointer text-center group transition-all">
                    <div className="w-16 h-16 mx-auto bg-slate-800 rounded-full flex items-center justify-center mb-3 group-hover:bg-teal-500/20 transition-colors text-3xl">
                       {USER_EMOJIS[name]}
                    </div>
@@ -968,7 +1286,7 @@
                 ].map(tab => (
                   <button
                     key={tab.id}
-                    onClick={() => { setActiveTab(tab.id); setSelectedPost(null); setSelectedUser(null); setExpandedReviews({}); }}
+                    onClick={() => { setActiveTab(tab.id); setSelectedPost(null); setSelectedUser(null); setExpandedReviews({}); setPosterTarget(null); }}
                     className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
                       ${activeTab === tab.id ? 'border-teal-400 text-teal-400 bg-teal-400/5' : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
                   >
@@ -979,7 +1297,7 @@
             </div>
           </header>
 
-          <main className="max-w-2xl mx-auto px-4 py-8">
+          <main className={`${activeTab === 'user' && selectedUser && userViewMode === 'calendar' ? 'max-w-6xl' : 'max-w-2xl'} mx-auto px-2.5 sm:px-4 py-6 sm:py-8 transition-[max-width] duration-300`}>
             {isLoading ? (
                <div className="flex flex-col items-center justify-center py-20 text-teal-500">
                  <Loader2 className="w-8 h-8 animate-spin mb-4" />
@@ -994,6 +1312,98 @@
               </>
             )}
           </main>
+
+          {posterTarget && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm px-4 animate-in fade-in duration-200">
+              <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="min-w-0">
+                    <p className="text-xs text-teal-400 mb-1">{posterDraft.trim() ? t.editPoster : t.addPoster}</p>
+                    <h3 className="text-lg font-bold text-white break-words">{posterTarget.movieTitle}</h3>
+                    <p className="text-xs text-yellow-400 mt-1">★ {posterTarget.rating}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setPosterTarget(null); setPosterDraft(''); }}
+                    className="text-slate-400 hover:text-white p-1 shrink-0"
+                    aria-label={t.cancel}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {posterDraft.trim() && (
+                  <div className="mb-4 rounded-xl overflow-hidden border border-slate-700 bg-slate-950 flex justify-center">
+                    <img
+                      src={posterDraft.trim()}
+                      alt={t.posterPreview}
+                      className="max-h-64 w-auto object-contain"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                )}
+
+                <form onSubmit={savePosterUrl} className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1.5">{t.posterUrl}</label>
+                    <input
+                      type="url"
+                      value={posterDraft}
+                      onChange={e => setPosterDraft(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => openGoogleImageSearch(posterTarget.movieTitle)}
+                    className="w-full bg-slate-800 border border-slate-700 hover:border-teal-400 hover:text-teal-400 px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Globe className="w-4 h-4" /> {t.imageSearch}
+                  </button>
+
+                  <div className="rounded-lg bg-slate-800/50 border border-slate-700/60 p-3">
+                    <p className="text-[11px] text-slate-400 leading-relaxed">{t.posterGuide}</p>
+                    <p className="text-[11px] text-amber-400/80 leading-relaxed mt-1">{t.posterLocalOnly}</p>
+                  </div>
+
+                  <div className="flex flex-col-reverse sm:flex-row justify-between gap-2 pt-1">
+                    <div>
+                      {getPosterUrl(posterTarget) && (
+                        <button
+                          type="button"
+                          onClick={removePosterUrl}
+                          disabled={isSubmitting}
+                          className="w-full sm:w-auto px-4 py-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {t.removePoster}
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setPosterTarget(null); setPosterDraft(''); }}
+                        disabled={isSubmitting}
+                        className="flex-1 sm:flex-none px-4 py-2 text-sm bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {t.cancel}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="flex-1 sm:flex-none px-4 py-2 text-sm bg-teal-500 text-slate-950 font-bold rounded-lg hover:bg-teal-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                        {t.save}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {/* ✨ 삭제 확인 모달 (팝업) ✨ */}
           {itemToDelete && (
