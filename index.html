@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -1305,6 +1304,18 @@
       const renderUser = () => {
         if (selectedUser) {
           const userReviews = appData.reviews.filter(r => r.nickname === selectedUser);
+
+          // 전체 보기: 관람일 기준 최신순. 같은 관람일이면 최근 등록한 리뷰를 먼저 표시합니다.
+          const dateSortedReviews = [...userReviews].sort((a, b) => {
+            const dateA = formatDateOnly(a.date) || '0000-00-00';
+            const dateB = formatDateOnly(b.date) || '0000-00-00';
+            const dateCompare = dateB.localeCompare(dateA);
+            if (dateCompare !== 0) return dateCompare;
+
+            const createdAtA = new Date(a.createdAt || 0).getTime() || 0;
+            const createdAtB = new Date(b.createdAt || 0).getTime() || 0;
+            return createdAtB - createdAtA;
+          });
           
           const sortedReviews = [...userReviews].sort((a, b) => {
             if (ratingSortOrder === 'desc') return b.rating - a.rating;
@@ -1341,7 +1352,7 @@
                 <p className="text-slate-500 text-center py-10">{t.noData}</p>
               ) : userViewMode === 'default' ? (
                 <div className="grid gap-6">
-                  {userReviews.map(r => (
+                  {dateSortedReviews.map(r => (
                     <div key={r.id} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg relative group">
                       {editingItem?.id === r.id ? (
                         <form onSubmit={handleEditSave} className="space-y-3 mb-4">
