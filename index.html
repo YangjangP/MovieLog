@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -64,6 +65,9 @@
         rating: "별점",
         comment: "감상평",
         commentDesc: "한국어 또는 일본어로 작성하면 자동 번역됩니다! 스포일러는 [  ] 기호로 감싸주세요",
+        commentEnabled: "작성",
+        commentDisabled: "작성 안 함",
+        commentSkipGuide: "감상평 없이 별점만 기록합니다. 나중에 수정 기능으로 감상평을 추가할 수 있어요.",
         submit: "기록 남기기",
         saving: "처리 중...",
         placeholderReview: "이 영화, 어떠셨나요?",
@@ -113,6 +117,9 @@
         rating: "評価",
         comment: "感想",
         commentDesc: "韓国語または日本語で入力すると自動翻訳されます！ネタバレは[ ]記号で包んでください",
+        commentEnabled: "入力する",
+        commentDisabled: "入力しない",
+        commentSkipGuide: "感想なしで評価だけを記録します。あとから編集機能で感想を追加できます。",
         submit: "記録を残す",
         saving: "処理中...",
         placeholderReview: "この映画、どうでしたか？",
@@ -453,11 +460,12 @@
         setIsSubmitting(true);
         try {
           const week = calculateWeek(formData.date);
+          const reviewComment = formData.comment || '';
           const newReview = {
             id: generateId(), nickname: formData.nickname, date: formData.date, week: week,
             movieTitle: formData.movieTitle, rating: parseFloat(formData.rating),
-            commentKo: formData.comment, commentJp: formData.comment,
-            rawComment: formData.comment, posterUrl: '', PosterUrl: '',
+            commentKo: reviewComment, commentJp: reviewComment,
+            rawComment: reviewComment, posterUrl: '', PosterUrl: '',
             createdAt: new Date().toISOString()
           };
           await postDataToSheet('addReview', newReview);
@@ -656,11 +664,14 @@
       };
 
       const ReviewForm = () => {
-        const [form, setForm] = useState({ nickname: NICKNAMES[0], date: todayStr, movieTitle: '', rating: 5.0, comment: '' });
+        const [form, setForm] = useState({ nickname: NICKNAMES[0], date: todayStr, movieTitle: '', rating: 5.0, comment: '', includeComment: true });
         return (
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl mb-8">
             <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2"><Film className="w-5 h-5 text-teal-400" />새 리뷰 작성</h2>
-            <form onSubmit={e => submitReview(e, form).then(() => setForm({...form, movieTitle: '', comment: ''}))} className="flex flex-col gap-4">
+            <form
+              onSubmit={e => submitReview(e, { ...form, comment: form.includeComment ? form.comment : '' }).then(() => setForm({...form, movieTitle: '', comment: ''}))}
+              className="flex flex-col gap-4"
+            >
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-slate-400 mb-1">{t.nickname}</label>
@@ -685,9 +696,40 @@
                 </div>
               </div>
               <div className="flex flex-col">
-                <label className="block text-xs text-slate-400 mb-1">{t.comment}</label>
-                <p className="text-[10px] text-teal-400/80 mb-2">{t.commentDesc}</p>
-                <textarea required placeholder={t.placeholderReview} value={form.comment} onChange={e => setForm({...form, comment: e.target.value})} className="flex-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 resize-y min-h-[120px] mb-3" rows="5" />
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <label className="block text-xs text-slate-400">{t.comment}</label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={form.includeComment}
+                    onClick={() => setForm({...form, includeComment: !form.includeComment})}
+                    className="flex items-center gap-2 text-[11px] text-slate-400 hover:text-slate-200 transition-colors"
+                  >
+                    <span>{form.includeComment ? t.commentEnabled : t.commentDisabled}</span>
+                    <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${form.includeComment ? 'bg-teal-500' : 'bg-slate-700'}`}>
+                      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${form.includeComment ? 'translate-x-[18px]' : 'translate-x-0.5'}`}></span>
+                    </span>
+                  </button>
+                </div>
+
+                {form.includeComment ? (
+                  <>
+                    <p className="text-[10px] text-teal-400/80 mb-2">{t.commentDesc}</p>
+                    <textarea
+                      required
+                      placeholder={t.placeholderReview}
+                      value={form.comment}
+                      onChange={e => setForm({...form, comment: e.target.value})}
+                      className="flex-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 resize-y min-h-[120px] mb-3"
+                      rows="5"
+                    />
+                  </>
+                ) : (
+                  <div className="mb-3 rounded-lg border border-slate-700/70 bg-slate-800/40 px-3 py-3 text-xs text-slate-400 leading-relaxed">
+                    {t.commentSkipGuide}
+                  </div>
+                )}
+
                 <button type="submit" disabled={isSubmitting} className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-3 rounded-lg flex justify-center items-center gap-2">
                   {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</> : <><Send className="w-4 h-4" /> {t.submit}</>}
                 </button>
@@ -770,7 +812,7 @@
                            <input type="range" min="0.5" max="5" step="0.5" value={editingItem.form.rating} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, rating: e.target.value } })} className="flex-1 accent-teal-500" />
                            <div className="flex justify-center">{renderStars(parseFloat(editingItem.form.rating))}</div>
                         </div>
-                        <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-y min-h-[120px] focus:border-teal-400" rows="5" />
+                        <textarea placeholder={t.placeholderReview} value={editingItem.form.comment || ''} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-y min-h-[120px] focus:border-teal-400" rows="5" />
                         <div className="flex justify-end gap-2">
                           <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-1.5 text-sm bg-slate-700 rounded hover:bg-slate-600 transition-colors">{t.cancel}</button>
                           <button type="submit" disabled={isSubmitting} className="px-4 py-1.5 text-sm bg-teal-500 text-slate-900 font-bold rounded hover:bg-teal-400 transition-colors">{t.save}</button>
@@ -798,7 +840,9 @@
                             {renderStars(r.rating)}
                           </div>
                         </div>
-                        <SpoilerText text={appLang === 'ko' ? r.commentKo : r.commentJp} className="block text-left text-slate-300 text-sm mt-3 whitespace-pre-wrap break-words leading-relaxed" />
+                        {((appLang === 'ko' ? r.commentKo : r.commentJp) || '').trim() && (
+                          <SpoilerText text={appLang === 'ko' ? r.commentKo : r.commentJp} className="block text-left text-slate-300 text-sm mt-3 whitespace-pre-wrap break-words leading-relaxed" />
+                        )}
                       </>
                     )}
                     <CommentSection parentId={r.id} parentType="review" />
@@ -1125,7 +1169,7 @@
                              <input type="range" min="0.5" max="5" step="0.5" value={editingItem.form.rating} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, rating: e.target.value } })} className="flex-1 accent-teal-500" />
                              <div className="flex justify-center">{renderStars(parseFloat(editingItem.form.rating))}</div>
                           </div>
-                          <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-y min-h-[120px] focus:border-teal-400" rows="5" />
+                          <textarea placeholder={t.placeholderReview} value={editingItem.form.comment || ''} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-y min-h-[120px] focus:border-teal-400" rows="5" />
                           <div className="flex justify-end gap-2">
                             <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-1.5 text-sm bg-slate-700 rounded hover:bg-slate-600 transition-colors">{t.cancel}</button>
                             <button type="submit" disabled={isSubmitting} className="px-4 py-1.5 text-sm bg-teal-500 text-slate-900 font-bold rounded hover:bg-teal-400 transition-colors">{t.save}</button>
@@ -1151,7 +1195,9 @@
                               {renderStars(r.rating)}
                             </div>
                           </div>
+                          {((appLang === 'ko' ? r.commentKo : r.commentJp) || '').trim() && (
                           <SpoilerText text={appLang === 'ko' ? r.commentKo : r.commentJp} className="block text-left text-slate-300 text-sm mt-3 whitespace-pre-wrap break-words leading-relaxed" />
+                        )}
                         </>
                       )}
                       <CommentSection parentId={r.id} parentType="review" />
@@ -1183,7 +1229,7 @@
                                  <input type="range" min="0.5" max="5" step="0.5" value={editingItem.form.rating} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, rating: e.target.value } })} className="flex-1 accent-teal-500" />
                                  <div className="flex justify-center">{renderStars(parseFloat(editingItem.form.rating))}</div>
                               </div>
-                              <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-y min-h-[120px] focus:border-teal-400" rows="5" />
+                              <textarea placeholder={t.placeholderReview} value={editingItem.form.comment || ''} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white resize-y min-h-[120px] focus:border-teal-400" rows="5" />
                               <div className="flex justify-end gap-2">
                                 <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-1.5 text-sm bg-slate-700 rounded hover:bg-slate-600 transition-colors">{t.cancel}</button>
                                 <button type="submit" disabled={isSubmitting} className="px-4 py-1.5 text-sm bg-teal-500 text-slate-900 font-bold rounded hover:bg-teal-400 transition-colors">{t.save}</button>
@@ -1216,7 +1262,9 @@
                                   {renderStars(r.rating)}
                                 </div>
                               </div>
-                              <SpoilerText text={appLang === 'ko' ? r.commentKo : r.commentJp} className="block text-left text-slate-300 text-sm mt-3 whitespace-pre-wrap break-words leading-relaxed" />
+                              {((appLang === 'ko' ? r.commentKo : r.commentJp) || '').trim() && (
+                          <SpoilerText text={appLang === 'ko' ? r.commentKo : r.commentJp} className="block text-left text-slate-300 text-sm mt-3 whitespace-pre-wrap break-words leading-relaxed" />
+                        )}
                             </>
                           )}
                           <CommentSection parentId={r.id} parentType="review" />
