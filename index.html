@@ -184,10 +184,11 @@
       X: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
       Sun: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>,
       Moon: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>,
+      Lightbulb: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 18h6"/><path d="M10 22h4"/><path d="M8.5 14.5A6 6 0 1 1 15.5 14.5C14.5 15.3 14 16.1 14 18h-4c0-1.9-.5-2.7-1.5-3.5Z"/></svg>,
       Trash2: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
     };
 
-    const { Star, Globe, Calendar, User, Film, Send, Loader2, MessageSquare, ClipboardList, Megaphone, Users, CalendarDays, Edit2, X, Sun, Moon, Trash2 } = Icons;
+    const { Star, Globe, Calendar, User, Film, Send, Loader2, MessageSquare, ClipboardList, Megaphone, Users, CalendarDays, Edit2, X, Sun, Moon, Lightbulb, Trash2 } = Icons;
 
     // --- Google Apps Script URL ---
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbysA1wBydZ0E1m-zH8ckLYpShztE-NEuQSS859swuQ0d8oBqKODQBdY4KE-Wl4sU36i/exec";
@@ -200,6 +201,20 @@
         navNotice: "Notice",
         navForum: "Forum",
         navUser: "User",
+        navFeedback: "Feedback",
+        feedbackTitle: "오류 및 제안 보내기",
+        feedbackIntro: "사이트 이용 중 발견한 오류나 개선 아이디어를 남겨주세요. 제출한 내용은 운영자에게 이메일로 전달됩니다.",
+        feedbackType: "유형",
+        feedbackBug: "오류 신고",
+        feedbackSuggestion: "제안사항",
+        feedbackOther: "기타",
+        feedbackNickname: "작성자",
+        feedbackContent: "내용",
+        feedbackPlaceholder: "어떤 문제가 있었는지, 또는 어떤 기능이 있으면 좋을지 자유롭게 적어주세요.",
+        feedbackSubmit: "의견 보내기",
+        feedbackSending: "전송 중...",
+        feedbackSuccess: "의견이 전송되었습니다. 소중한 피드백 감사합니다!",
+        feedbackError: "전송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
         nickname: "닉네임",
         date: "관람일",
         movieTitle: "영화 제목",
@@ -256,6 +271,20 @@
         navNotice: "Notice",
         navForum: "Forum",
         navUser: "User",
+        navFeedback: "Feedback",
+        feedbackTitle: "不具合・ご意見を送る",
+        feedbackIntro: "サイトで見つけた不具合や改善案をお寄せください。送信内容は運営者へメールで届きます。",
+        feedbackType: "種類",
+        feedbackBug: "不具合報告",
+        feedbackSuggestion: "ご提案",
+        feedbackOther: "その他",
+        feedbackNickname: "お名前",
+        feedbackContent: "内容",
+        feedbackPlaceholder: "発生した問題や、追加してほしい機能などを自由にご記入ください。",
+        feedbackSubmit: "意見を送る",
+        feedbackSending: "送信中...",
+        feedbackSuccess: "送信しました。貴重なご意見をありがとうございます！",
+        feedbackError: "送信中にエラーが発生しました。しばらくしてからもう一度お試しください。",
         nickname: "ニックネーム",
         date: "鑑賞日",
         movieTitle: "映画のタイトル",
@@ -671,6 +700,47 @@
         } finally { setIsSubmitting(false); }
       };
 
+      const submitFeedback = async (formData) => {
+        setIsSubmitting(true);
+        try {
+          const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              action: 'sendFeedback',
+              payload: {
+                type: formData.type,
+                nickname: formData.nickname,
+                content: formData.content.trim(),
+                language: appLang,
+                pageUrl: window.location.href,
+                userAgent: navigator.userAgent,
+                createdAt: new Date().toISOString()
+              }
+            })
+          });
+
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+          const responseText = await response.text();
+          if (responseText) {
+            try {
+              const result = JSON.parse(responseText);
+              if (result.success === false) throw new Error(result.message || 'Feedback send failed');
+            } catch (parseError) {
+              if (parseError instanceof SyntaxError) {
+                // 기존 Apps Script가 JSON이 아닌 빈 문자열/텍스트를 반환해도 HTTP가 성공하면 전송 완료로 처리합니다.
+              } else {
+                throw parseError;
+              }
+            }
+          }
+          return true;
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
+
       const handleEditSave = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -943,6 +1013,105 @@
                 {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</> : t.submit}
               </button>
             </form>
+          </div>
+        );
+      };
+
+      const FeedbackForm = () => {
+        const [form, setForm] = useState({
+          type: 'suggestion',
+          nickname: NICKNAMES[0],
+          content: ''
+        });
+        const [feedbackStatus, setFeedbackStatus] = useState('idle');
+
+        const handleSubmit = async (e) => {
+          e.preventDefault();
+          setFeedbackStatus('idle');
+          try {
+            await submitFeedback(form);
+            setForm(prev => ({ ...prev, content: '' }));
+            setFeedbackStatus('success');
+          } catch (error) {
+            console.error('Error sending feedback:', error);
+            setFeedbackStatus('error');
+          }
+        };
+
+        return (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-7 shadow-xl">
+              <div className="flex items-start gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
+                  <Lightbulb className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">{t.feedbackTitle}</h2>
+                  <p className="mt-1 text-sm text-slate-400 leading-relaxed">{t.feedbackIntro}</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1.5">{t.feedbackType}</label>
+                    <select
+                      value={form.type}
+                      onChange={e => setForm({ ...form, type: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    >
+                      <option value="bug">{t.feedbackBug}</option>
+                      <option value="suggestion">{t.feedbackSuggestion}</option>
+                      <option value="other">{t.feedbackOther}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1.5">{t.feedbackNickname}</label>
+                    <select
+                      value={form.nickname}
+                      onChange={e => setForm({ ...form, nickname: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    >
+                      {NICKNAMES.map(name => <option key={name} value={name}>{name}</option>)}
+                      <option value="Anonymous">{appLang === 'ko' ? '익명' : '匿名'}</option>
+                    </select>
+                  </div>
+                </div>
+
+
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1.5">{t.feedbackContent}</label>
+                  <textarea
+                    required
+                    minLength="5"
+                    rows="8"
+                    value={form.content}
+                    onChange={e => setForm({ ...form, content: e.target.value })}
+                    placeholder={t.feedbackPlaceholder}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 resize-y min-h-[180px]"
+                  />
+                </div>
+
+                {feedbackStatus === 'success' && (
+                  <div className="rounded-lg border border-teal-500/40 bg-teal-500/5 px-3 py-2.5 text-sm text-teal-400">
+                    {t.feedbackSuccess}
+                  </div>
+                )}
+                {feedbackStatus === 'error' && (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-sm text-red-400">
+                    {t.feedbackError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !form.content.trim()}
+                  className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-3 rounded-lg flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.feedbackSending}</> : <><Send className="w-4 h-4" /> {t.feedbackSubmit}</>}
+                </button>
+              </form>
+            </div>
           </div>
         );
       };
@@ -1542,7 +1711,8 @@
                   { id: 'summary', icon: ClipboardList, label: t.navSummary },
                   { id: 'notice', icon: Megaphone, label: t.navNotice },
                   { id: 'forum', icon: MessageSquare, label: t.navForum },
-                  { id: 'user', icon: Users, label: t.navUser }
+                  { id: 'user', icon: Users, label: t.navUser },
+                  { id: 'feedback', icon: Lightbulb, label: t.navFeedback }
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -1569,6 +1739,7 @@
                 {activeTab === 'notice' && renderBoard('notice')}
                 {activeTab === 'forum' && renderBoard('forum')}
                 {activeTab === 'user' && renderUser()}
+                {activeTab === 'feedback' && <FeedbackForm />}
               </>
             )}
           </main>
