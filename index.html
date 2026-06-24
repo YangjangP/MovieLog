@@ -68,6 +68,8 @@
         commentEnabled: "작성",
         commentDisabled: "작성 안 함",
         commentSkipGuide: "감상평 없이 별점만 기록합니다. 나중에 수정 기능으로 감상평을 추가할 수 있어요.",
+        hideFromSummary: "Summary에서 숨기기",
+        hideFromSummaryGuide: "켜면 Summary 탭에는 표시되지 않고 User 페이지에만 기록됩니다.",
         submit: "기록 남기기",
         saving: "처리 중...",
         placeholderReview: "이 영화, 어떠셨나요?",
@@ -120,6 +122,8 @@
         commentEnabled: "入力する",
         commentDisabled: "入力しない",
         commentSkipGuide: "感想なしで評価だけを記録します。あとから編集機能で感想を追加できます。",
+        hideFromSummary: "Summaryに表示しない",
+        hideFromSummaryGuide: "オンにするとSummaryには表示されず、Userページにのみ記録されます。",
         submit: "記録を残す",
         saving: "処理中...",
         placeholderReview: "この映画、どうでしたか？",
@@ -198,6 +202,12 @@
     };
 
     const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+
+    const parseBoolean = (value) => {
+      if (value === true || value === 1) return true;
+      const normalized = String(value ?? '').trim().toLowerCase();
+      return ['true', '1', 'yes', 'y', 'on'].includes(normalized);
+    };
 
 
     // --- 스포일러 텍스트 처리 ---
@@ -409,6 +419,7 @@
             movieTitle: item.MovieTitle || item.movieTitle,
             rating: item.Rating || item.rating,
             posterUrl: item.PosterUrl || item.posterUrl || '',
+            hideFromSummary: parseBoolean(item.HideFromSummary ?? item.hideFromSummary),
             titleKo: item.TitleKo || item.titleKo,
             titleJp: item.TitleJp || item.titleJp,
             contentKo: item.ContentKo || item.contentKo,
@@ -466,6 +477,8 @@
             movieTitle: formData.movieTitle, rating: parseFloat(formData.rating),
             commentKo: reviewComment, commentJp: reviewComment,
             rawComment: reviewComment, posterUrl: '', PosterUrl: '',
+            hideFromSummary: !!formData.hideFromSummary,
+            HideFromSummary: formData.hideFromSummary ? 'TRUE' : 'FALSE',
             createdAt: new Date().toISOString()
           };
           await postDataToSheet('addReview', newReview);
@@ -664,12 +677,12 @@
       };
 
       const ReviewForm = () => {
-        const [form, setForm] = useState({ nickname: NICKNAMES[0], date: todayStr, movieTitle: '', rating: 5.0, comment: '', includeComment: true });
+        const [form, setForm] = useState({ nickname: NICKNAMES[0], date: todayStr, movieTitle: '', rating: 5.0, comment: '', includeComment: true, hideFromSummary: false });
         return (
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl mb-8">
             <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2"><Film className="w-5 h-5 text-teal-400" />새 리뷰 작성</h2>
             <form
-              onSubmit={e => submitReview(e, { ...form, comment: form.includeComment ? form.comment : '' }).then(() => setForm({...form, movieTitle: '', comment: ''}))}
+              onSubmit={e => submitReview(e, { ...form, comment: form.includeComment ? form.comment : '' }).then(() => setForm({...form, movieTitle: '', comment: '', hideFromSummary: false}))}
               className="flex flex-col gap-4"
             >
               <div className="flex flex-col sm:flex-row gap-4">
@@ -730,6 +743,24 @@
                   </div>
                 )}
 
+                <label className={`mb-3 flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition-colors ${form.hideFromSummary ? 'border-teal-500/40 bg-teal-500/5' : 'border-slate-800 bg-slate-900/30 hover:border-slate-700'}`}>
+                  <input
+                    type="checkbox"
+                    checked={form.hideFromSummary}
+                    onChange={e => setForm({...form, hideFromSummary: e.target.checked})}
+                    className="peer sr-only"
+                  />
+                  <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${form.hideFromSummary ? 'border-teal-500 bg-teal-500 text-slate-950' : 'border-slate-600 bg-slate-800 text-transparent'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+                      <path d="m5 12 4 4L19 6" />
+                    </svg>
+                  </span>
+                  <span className="min-w-0">
+                    <span className={`block text-xs font-medium transition-colors ${form.hideFromSummary ? 'text-teal-300' : 'text-slate-400'}`}>{t.hideFromSummary}</span>
+                    <span className="mt-0.5 block text-[10px] leading-relaxed text-slate-500">{t.hideFromSummaryGuide}</span>
+                  </span>
+                </label>
+
                 <button type="submit" disabled={isSubmitting} className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-3 rounded-lg flex justify-center items-center gap-2">
                   {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</> : <><Send className="w-4 h-4" /> {t.submit}</>}
                 </button>
@@ -761,7 +792,7 @@
       };
 
       const renderSummary = () => {
-        const weekReviews = appData.reviews.filter(r => r.week === selectedWeek);
+        const weekReviews = appData.reviews.filter(r => r.week === selectedWeek && !r.hideFromSummary);
         const weekOptions = Array.from({length: currentWeekNum}, (_, i) => currentWeekNum - i);
 
         return (
