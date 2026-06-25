@@ -1944,7 +1944,11 @@
           return acc;
         }, {});
 
-        const cells = Array.from({ length: 42 }, (_, index) => {
+        // 해당 달의 마지막 날짜가 포함된 주까지만 표시합니다.
+        // 달력은 필요한 경우에만 4주, 5주 또는 6주로 자동 조정됩니다.
+        const calendarCellCount = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+
+        const cells = Array.from({ length: calendarCellCount }, (_, index) => {
           const relativeDay = index - firstWeekday + 1;
           let cellYear = year;
           let cellMonth = month;
@@ -2066,7 +2070,7 @@
                 {cells.map((cell, index) => (
                   <div
                     key={cell.dateKey}
-                    className={`min-w-0 min-h-[98px] sm:min-h-[150px] lg:min-h-[188px] border-b border-r border-slate-800/80 p-0.5 sm:p-1.5 ${index % 7 === 6 ? 'border-r-0' : ''} ${index >= 35 ? 'border-b-0' : ''} ${cell.isCurrentMonth ? 'bg-slate-900/50' : 'bg-slate-950/45'}`}
+                    className={`min-w-0 min-h-[98px] sm:min-h-[150px] lg:min-h-[188px] border-b border-r border-slate-800/80 p-0.5 sm:p-1.5 ${index % 7 === 6 ? 'border-r-0' : ''} ${index >= calendarCellCount - 7 ? 'border-b-0' : ''} ${cell.isCurrentMonth ? 'bg-slate-900/50' : 'bg-slate-950/45'}`}
                   >
                     <div className="flex justify-between items-center mb-0.5 sm:mb-1 px-0.5">
                       <span className={`w-4 h-4 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[8px] sm:text-xs font-semibold ${cell.dateKey === todayKey ? 'bg-teal-500 text-slate-950' : cell.isCurrentMonth ? 'text-slate-300' : 'text-slate-600'}`}>
