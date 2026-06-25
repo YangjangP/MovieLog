@@ -614,11 +614,24 @@
         setIsTmdbSearching(false);
       };
 
+      // 리뷰 제목이 "한국어 제목 | 원제" 또는 "한국어 제목 ｜ 원제" 형식이면
+      // TMDB 검색창에는 첫 번째 제목만 자동 입력합니다.
+      const getTmdbInitialQuery = (movieTitle) => {
+        const originalTitle = String(movieTitle || '').trim();
+        if (!originalTitle) return '';
+
+        const [firstTitle] = originalTitle.split(
+          /\s*(?:\||｜)\s*/
+        );
+
+        return String(firstTitle || '').trim() || originalTitle;
+      };
+
       const openPosterEditor = (review) => {
         if (!isOwner(review)) return;
         setPosterTarget(review);
         setPosterDraft(getPosterUrl(review));
-        setTmdbQuery(review.movieTitle || '');
+        setTmdbQuery(getTmdbInitialQuery(review.movieTitle));
         setTmdbResults([]);
         setTmdbError('');
       };
