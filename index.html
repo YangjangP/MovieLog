@@ -301,6 +301,19 @@
         movieInfoOpenGuide: "영화 정보 보기",
         movieInfoBadge: "영화 정보",
         movieInfoSummaryGuide: "영화 제목을 누르면 포스터와 작품 정보를 확인할 수 있습니다.",
+        reviewMovieSearchGuide: "영화 제목을 입력하면 TMDB 검색 후보가 표시됩니다.",
+        reviewMovieSearching: "영화 검색 중...",
+        reviewMovieSelected: "선택한 영화",
+        reviewMovieManualGuide: "후보를 선택하지 않으면 입력한 제목 그대로 등록됩니다.",
+        reviewMovieNoResults: "검색 후보가 없습니다. 입력한 제목 그대로 등록할 수 있습니다.",
+        reviewMovieSearchError: "영화 검색 중 오류가 발생했습니다. 수기 입력은 그대로 사용할 수 있습니다.",
+        reviewMovieClearSelection: "선택 해제",
+        movieLogRatingTitle: "Movie Log 평가",
+        movieLogAverageRating: "평균 별점",
+        movieLogSameMovieMembers: "같은 영화를 본 멤버",
+        movieLogViewerUnit: "명 감상",
+        movieLogReviewUnit: "개 리뷰",
+        movieLogNoSameReviews: "아직 같은 영화를 기록한 멤버가 없습니다.",
         autoPosterFill: "빈 포스터 자동 채우기",
         autoPosterFilling: "자동 등록 중",
         autoPosterGuide: "포스터가 없는 내 기존 리뷰 전체를 TMDB 첫 검색 결과로 채웁니다. 자동 등록 후에도 각 포스터를 눌러 직접 변경할 수 있습니다.",
@@ -410,6 +423,19 @@
         movieInfoOpenGuide: "映画情報を見る",
         movieInfoBadge: "映画情報",
         movieInfoSummaryGuide: "映画タイトルを押すと、ポスターや作品情報を確認できます。",
+        reviewMovieSearchGuide: "映画タイトルを入力すると、TMDBの検索候補が表示されます。",
+        reviewMovieSearching: "映画を検索中...",
+        reviewMovieSelected: "選択した映画",
+        reviewMovieManualGuide: "候補を選ばない場合は、入力したタイトルのまま登録されます。",
+        reviewMovieNoResults: "検索候補がありません。入力したタイトルのまま登録できます。",
+        reviewMovieSearchError: "映画の検索中にエラーが発生しました。手入力したタイトルはそのまま使用できます。",
+        reviewMovieClearSelection: "選択解除",
+        movieLogRatingTitle: "Movie Log評価",
+        movieLogAverageRating: "平均評価",
+        movieLogSameMovieMembers: "同じ映画を観たメンバー",
+        movieLogViewerUnit: "人が鑑賞",
+        movieLogReviewUnit: "件のレビュー",
+        movieLogNoSameReviews: "同じ映画を記録したメンバーはまだいません。",
         autoPosterFill: "空のポスターを自動登録",
         autoPosterFilling: "自動登録中",
         autoPosterGuide: "ポスターが未登録の自分の既存レビューを、TMDBの最初の検索結果でまとめて登録します。登録後も各ポスターを押して手動で変更できます。",
@@ -699,6 +725,36 @@
         return String(firstTitle || '').trim() || originalTitle;
       };
 
+      const normalizeMovieTitleToken = (value) => {
+        const normalized = String(value || '').normalize('NFKC').toLocaleLowerCase();
+        return normalized
+          .replace(/\(\s*(?:19|20)\d{2}\s*\)$/, '')
+          .replace(/[^\p{L}\p{N}]+/gu, '');
+      };
+
+      const getMovieTitleAliases = (movieTitle) => {
+        const rawTitle = String(movieTitle || '').trim();
+        if (!rawTitle) return [];
+
+        return Array.from(new Set(
+          rawTitle
+            .split(/\s*(?:\||｜)\s*/)
+            .map(normalizeMovieTitleToken)
+            .filter(Boolean)
+        ));
+      };
+
+      const formatTmdbReviewTitle = (movie) => {
+        const localizedTitle = String(movie?.title || movie?.original_title || '').trim();
+        const originalTitle = String(movie?.original_title || '').trim();
+
+        if (!localizedTitle) return '';
+        if (originalTitle && normalizeMovieTitleToken(localizedTitle) !== normalizeMovieTitleToken(originalTitle)) {
+          return `${localizedTitle} | ${originalTitle}`;
+        }
+        return localizedTitle;
+      };
+
       const openPosterEditor = (review) => {
         if (!isOwner(review)) return;
         setPosterTarget(review);
@@ -756,7 +812,7 @@
         setIsMovieInfoSearching(false);
       };
 
-      const searchMovieInfo = async (queryOverride) => {
+      const searchMovieInfo = async (queryOverride, targetOverride = movieInfoTarget) => {
         const query = String(queryOverride ?? movieInfoQuery).trim();
         if (!query) return;
 
@@ -794,8 +850,14 @@
 
           // 영화 검색 API가 기본적으로 제공하는 제목, 공개일, 줄거리, 포스터만 사용합니다.
           const results = (data.results || []).slice(0, 10);
+          const targetReview = targetOverride || movieInfoTarget;
+          const savedPosterUrl = getPosterUrl(targetReview);
+          const posterMatchedMovie = savedPosterUrl
+            ? results.find(movie => movie.poster_path && buildTmdbPosterUrl(movie.poster_path) === savedPosterUrl)
+            : null;
+
           setMovieInfoResults(results);
-          setSelectedMovieInfo(results[0] || null);
+          setSelectedMovieInfo(posterMatchedMovie || results[0] || null);
 
           if (results.length === 0) {
             setMovieInfoError(t.movieInfoNoResults);
@@ -815,7 +877,33 @@
         setMovieInfoResults([]);
         setSelectedMovieInfo(null);
         setMovieInfoError('');
-        searchMovieInfo(initialQuery);
+        searchMovieInfo(initialQuery, review);
+      };
+
+      const getMatchingMovieReviews = (movie) => {
+        if (!movie) return [];
+
+        const selectedAliases = new Set([
+          ...getMovieTitleAliases(movie.title),
+          ...getMovieTitleAliases(movie.original_title)
+        ]);
+        const selectedPosterUrl = movie.poster_path ? buildTmdbPosterUrl(movie.poster_path) : '';
+
+        return appData.reviews
+          .filter(review => {
+            if (movieInfoTarget && review.id === movieInfoTarget.id) return true;
+
+            const reviewPosterUrl = getPosterUrl(review);
+            if (selectedPosterUrl && reviewPosterUrl && selectedPosterUrl === reviewPosterUrl) return true;
+
+            const reviewAliases = getMovieTitleAliases(review.movieTitle);
+            return reviewAliases.some(alias => selectedAliases.has(alias));
+          })
+          .sort((a, b) => {
+            const dateA = formatDateOnly(a.date) || '';
+            const dateB = formatDateOnly(b.date) || '';
+            return dateB.localeCompare(dateA);
+          });
       };
 
       const MovieTitleButton = ({ review, className = '', truncate = false }) => (
@@ -1161,28 +1249,20 @@
         try {
           const week = calculateWeek(formData.date);
           const reviewComment = formData.comment || '';
+          const selectedPosterUrl = formData.selectedTmdbMovie?.poster_path
+            ? buildTmdbPosterUrl(formData.selectedTmdbMovie.poster_path)
+            : '';
           const newReview = {
             id: generateId(), nickname: currentUser, date: formData.date, week: week,
             movieTitle: formData.movieTitle, rating: parseFloat(formData.rating),
             commentKo: reviewComment, commentJp: reviewComment,
-            Comment: reviewComment, posterUrl: '', PosterUrl: '',
+            Comment: reviewComment, posterUrl: selectedPosterUrl, PosterUrl: selectedPosterUrl,
             hideFromSummary: !!formData.hideFromSummary,
             HideFromSummary: formData.hideFromSummary ? 'TRUE' : 'FALSE',
             createdAt: new Date().toISOString()
           };
           await postDataToSheet('addReview', newReview);
           updateDataAndCache(prev => ({ ...prev, reviews: [newReview, ...prev.reviews] }));
-
-          // 새 리뷰는 등록 직후 TMDB 첫 검색 결과의 포스터를 자동 저장합니다.
-          // 검색 결과가 없거나 오류가 나도 리뷰는 정상적으로 등록된 상태를 유지합니다.
-          try {
-            const autoPosterUrl = await fetchFirstTmdbPosterUrl(newReview.movieTitle);
-            if (autoPosterUrl) {
-              await persistPosterForReview(newReview.id, autoPosterUrl);
-            }
-          } catch (error) {
-            console.warn('Automatic poster search failed:', newReview.movieTitle, error);
-          }
         } finally { setIsSubmitting(false); }
       };
 
@@ -1492,13 +1572,104 @@
 
       const ReviewForm = () => {
         const [form, setForm] = useState({ date: todayStr, movieTitle: '', rating: 5.0, comment: '', includeComment: true, hideFromSummary: false });
+        const [movieCandidates, setMovieCandidates] = useState([]);
+        const [selectedTmdbMovie, setSelectedTmdbMovie] = useState(null);
+        const [isCandidateSearching, setIsCandidateSearching] = useState(false);
+        const [candidateError, setCandidateError] = useState('');
+        const [hasSearchedCandidates, setHasSearchedCandidates] = useState(false);
+
+        useEffect(() => {
+          const query = String(form.movieTitle || '').trim();
+          const selectedTitle = selectedTmdbMovie ? formatTmdbReviewTitle(selectedTmdbMovie) : '';
+
+          if (selectedTmdbMovie && query === selectedTitle) {
+            setMovieCandidates([]);
+            setCandidateError('');
+            setHasSearchedCandidates(false);
+            setIsCandidateSearching(false);
+            return;
+          }
+
+          if (query.length < 2) {
+            setMovieCandidates([]);
+            setCandidateError('');
+            setHasSearchedCandidates(false);
+            setIsCandidateSearching(false);
+            return;
+          }
+
+          let isCancelled = false;
+          const timer = setTimeout(async () => {
+            setIsCandidateSearching(true);
+            setCandidateError('');
+
+            try {
+              const language = appLang === 'ko' ? 'ko-KR' : 'ja-JP';
+              const requestUrl =
+                SCRIPT_URL +
+                '?action=tmdbSearch' +
+                '&query=' + encodeURIComponent(query) +
+                '&language=' + encodeURIComponent(language) +
+                '&t=' + Date.now();
+
+              const response = await fetch(requestUrl, { method: 'GET', cache: 'no-store' });
+              if (!response.ok) throw new Error(`TMDB_PROXY_HTTP_${response.status}`);
+
+              const data = await response.json();
+              if (data.success === false) throw new Error(data.message || t.reviewMovieSearchError);
+              if (isCancelled) return;
+
+              setMovieCandidates((data.results || []).slice(0, 6));
+              setHasSearchedCandidates(true);
+            } catch (error) {
+              if (isCancelled) return;
+              console.error('Review movie candidate search error:', error);
+              setMovieCandidates([]);
+              setHasSearchedCandidates(true);
+              setCandidateError(t.reviewMovieSearchError);
+            } finally {
+              if (!isCancelled) setIsCandidateSearching(false);
+            }
+          }, 550);
+
+          return () => {
+            isCancelled = true;
+            clearTimeout(timer);
+          };
+        }, [form.movieTitle, selectedTmdbMovie, appLang]);
+
+        const selectReviewMovie = (movie) => {
+          setSelectedTmdbMovie(movie);
+          setForm(prev => ({ ...prev, movieTitle: formatTmdbReviewTitle(movie) }));
+          setMovieCandidates([]);
+          setCandidateError('');
+          setHasSearchedCandidates(false);
+        };
+
+        const clearSelectedReviewMovie = () => {
+          setSelectedTmdbMovie(null);
+          setMovieCandidates([]);
+          setCandidateError('');
+          setHasSearchedCandidates(false);
+        };
+
+        const handleReviewSubmit = async (e) => {
+          await submitReview(e, {
+            ...form,
+            comment: form.includeComment ? form.comment : '',
+            selectedTmdbMovie
+          });
+          setForm(prev => ({ ...prev, movieTitle: '', comment: '', hideFromSummary: false }));
+          setSelectedTmdbMovie(null);
+          setMovieCandidates([]);
+          setCandidateError('');
+          setHasSearchedCandidates(false);
+        };
+
         return (
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl mb-8">
             <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2"><Film className="w-5 h-5 text-teal-400" />새 리뷰 작성</h2>
-            <form
-              onSubmit={e => submitReview(e, { ...form, comment: form.includeComment ? form.comment : '' }).then(() => setForm({...form, movieTitle: '', comment: '', hideFromSummary: false}))}
-              className="flex flex-col gap-4"
-            >
+            <form onSubmit={handleReviewSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-slate-400 mb-1">{t.nickname}</label>
@@ -1509,17 +1680,97 @@
                   <input type="date" required value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 [color-scheme:dark]" />
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
+
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                <div className="flex-1 min-w-0 w-full">
                   <label className="block text-xs text-slate-400 mb-1">{t.movieTitle}</label>
-                  <input type="text" required value={form.movieTitle} onChange={e => setForm({...form, movieTitle: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500" />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="off"
+                      value={form.movieTitle}
+                      onChange={e => {
+                        const nextTitle = e.target.value;
+                        setForm({...form, movieTitle: nextTitle});
+                        if (selectedTmdbMovie && nextTitle !== formatTmdbReviewTitle(selectedTmdbMovie)) {
+                          setSelectedTmdbMovie(null);
+                        }
+                      }}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    />
+                    {isCandidateSearching && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-teal-400" />
+                    )}
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-slate-500 leading-relaxed">{t.reviewMovieSearchGuide}</p>
+
+                  {selectedTmdbMovie && (
+                    <div className="mt-2 flex items-center gap-3 rounded-xl border border-teal-500/40 bg-teal-500/10 p-2.5">
+                      <div className="w-10 h-14 shrink-0 overflow-hidden rounded bg-slate-800 flex items-center justify-center">
+                        {selectedTmdbMovie.poster_path ? (
+                          <img src={buildTmdbPosterUrl(selectedTmdbMovie.poster_path)} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Film className="w-4 h-4 text-slate-600" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold text-teal-400">{t.reviewMovieSelected}</p>
+                        <p className="truncate text-xs font-semibold text-slate-200">{selectedTmdbMovie.title || selectedTmdbMovie.original_title}</p>
+                        <p className="mt-0.5 text-[10px] text-slate-500">{selectedTmdbMovie.release_date ? selectedTmdbMovie.release_date.slice(0, 4) : '-'}</p>
+                      </div>
+                      <button type="button" onClick={clearSelectedReviewMovie} className="shrink-0 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-400 hover:border-teal-400 hover:text-teal-400 transition-colors">
+                        {t.reviewMovieClearSelection}
+                      </button>
+                    </div>
+                  )}
+
+                  {!selectedTmdbMovie && movieCandidates.length > 0 && (
+                    <div className="mt-2 rounded-xl border border-slate-700 bg-slate-950/70 p-2 shadow-xl">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {movieCandidates.map(movie => (
+                          <button
+                            key={movie.id}
+                            type="button"
+                            onClick={() => selectReviewMovie(movie)}
+                            className="flex min-w-0 items-center gap-2 rounded-lg border border-transparent p-2 text-left hover:border-teal-500/50 hover:bg-slate-800 transition-colors"
+                          >
+                            <div className="w-9 h-12 shrink-0 overflow-hidden rounded bg-slate-800 flex items-center justify-center">
+                              {movie.poster_path ? (
+                                <img src={buildTmdbPosterUrl(movie.poster_path)} alt="" className="w-full h-full object-cover" loading="lazy" />
+                              ) : (
+                                <Film className="w-4 h-4 text-slate-600" />
+                              )}
+                            </div>
+                            <span className="min-w-0">
+                              <span className="block truncate text-[11px] font-semibold text-slate-200">{movie.title || movie.original_title}</span>
+                              {movie.original_title && movie.original_title !== movie.title && (
+                                <span className="mt-0.5 block truncate text-[10px] text-slate-500">{movie.original_title}</span>
+                              )}
+                              <span className="mt-0.5 block text-[10px] text-slate-500">{movie.release_date ? movie.release_date.slice(0, 4) : '-'}</span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="px-2 pt-1.5 text-[10px] text-slate-500">{t.reviewMovieManualGuide}</p>
+                    </div>
+                  )}
+
+                  {!selectedTmdbMovie && hasSearchedCandidates && !isCandidateSearching && movieCandidates.length === 0 && !candidateError && (
+                    <p className="mt-2 rounded-lg border border-slate-700/70 bg-slate-800/40 px-3 py-2 text-[10px] text-slate-400">{t.reviewMovieNoResults}</p>
+                  )}
+                  {!selectedTmdbMovie && candidateError && (
+                    <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] text-amber-300">{candidateError}</p>
+                  )}
                 </div>
-                <div className="flex-1">
+
+                <div className="flex-1 w-full">
                   <label className="block text-xs text-slate-400 mb-1 flex justify-between"><span>{t.rating}</span><span className="text-teal-400">{form.rating}</span></label>
                   <input type="range" min="0.5" max="5" step="0.5" value={form.rating} onChange={e => setForm({...form, rating: e.target.value})} className="w-full accent-teal-500 mb-2" />
                   <div className="flex justify-center bg-slate-800/40 py-1.5 rounded-lg">{renderStars(parseFloat(form.rating))}</div>
                 </div>
               </div>
+
               <div className="flex flex-col">
                 <div className="flex items-center justify-between gap-3 mb-1">
                   <label className="block text-xs text-slate-400">{t.comment}</label>
@@ -1581,7 +1832,6 @@
           </div>
         );
       };
-
       const BoardForm = ({ type }) => {
         const [form, setForm] = useState({ title: '', content: '' });
         return (
@@ -2431,6 +2681,15 @@
         );
       }
 
+      const matchingMovieReviews = selectedMovieInfo ? getMatchingMovieReviews(selectedMovieInfo) : [];
+      const matchingMovieRatings = matchingMovieReviews
+        .map(review => Number(review.rating))
+        .filter(rating => Number.isFinite(rating));
+      const matchingMovieAverage = matchingMovieRatings.length
+        ? matchingMovieRatings.reduce((sum, rating) => sum + rating, 0) / matchingMovieRatings.length
+        : 0;
+      const matchingMovieMemberCount = new Set(matchingMovieReviews.map(review => review.nickname)).size;
+
       return (
         <>
           <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-20 shadow-lg">
@@ -2609,6 +2868,44 @@
                         </p>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {!isMovieInfoSearching && selectedMovieInfo && (
+                  <div className="mb-5 rounded-2xl border border-slate-700 bg-slate-800/35 p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                      <div>
+                        <p className="text-xs font-semibold text-teal-400">{t.movieLogRatingTitle}</p>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {matchingMovieMemberCount}{t.movieLogViewerUnit} · {matchingMovieReviews.length}{t.movieLogReviewUnit}
+                        </p>
+                      </div>
+                      {matchingMovieRatings.length > 0 && (
+                        <div className="flex items-center gap-2 rounded-xl border border-yellow-400/20 bg-slate-900/70 px-3 py-2">
+                          <span className="text-xs text-slate-500">{t.movieLogAverageRating}</span>
+                          <span className="text-xl font-bold text-yellow-400">★ {matchingMovieAverage.toFixed(1)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {matchingMovieReviews.length > 0 ? (
+                      <div>
+                        <h4 className="mb-2 text-[11px] font-semibold text-slate-400">{t.movieLogSameMovieMembers}</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {matchingMovieReviews.map(review => (
+                            <div key={review.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 py-2">
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-medium text-slate-200">{USER_EMOJIS[review.nickname]} {review.nickname}</p>
+                                <p className="mt-0.5 text-[10px] text-slate-500">{formatDateOnly(review.date)}</p>
+                              </div>
+                              <span className="shrink-0 text-sm font-bold text-yellow-400">★ {Number(review.rating).toFixed(1)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500">{t.movieLogNoSameReviews}</p>
+                    )}
                   </div>
                 )}
 
