@@ -835,6 +835,18 @@
         return String(firstTitle || '').trim() || originalTitle;
       };
 
+      // 영화 정보 모달에서는 구분자 앞·뒤 제목을 함께 검색해 정확도를 높입니다.
+      // 예: "짝사랑 세계 | 片思い世界" → "짝사랑 세계 片思い世界"
+      const getMovieInfoInitialQuery = (movieTitle) => {
+        const originalTitle = String(movieTitle || '').trim();
+        if (!originalTitle) return '';
+
+        return originalTitle
+          .replace(/\s*(?:\||｜)\s*/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+
       const normalizeMovieTitleToken = (value) => {
         const normalized = String(value || '').normalize('NFKC').toLocaleLowerCase();
         return normalized
@@ -990,7 +1002,7 @@
       };
 
       const openMovieInfo = (review) => {
-        const initialQuery = getTmdbInitialQuery(review?.movieTitle);
+        const initialQuery = getMovieInfoInitialQuery(review?.movieTitle);
         setMovieInfoTarget(review);
         setMovieInfoQuery(initialQuery);
         setMovieInfoResults([]);
