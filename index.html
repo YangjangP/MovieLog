@@ -312,6 +312,9 @@
         movieLogSameMovieMembers: "같은 영화를 본 멤버",
         movieLogViewerUnit: "명 감상",
         movieLogReviewUnit: "개 리뷰",
+        movieLogOpenReview: "리뷰 보기",
+        movieLogCloseReview: "리뷰 접기",
+        movieLogNoComment: "작성된 감상평이 없습니다.",
         movieLogNoSameReviews: "아직 같은 영화를 기록한 멤버가 없습니다.",
         autoPosterFill: "빈 포스터 자동 채우기",
         autoPosterFilling: "자동 등록 중",
@@ -393,6 +396,7 @@
         posterUrl: "ポスター画像URLを直接入力",
         imageSearch: "Google画像で探す",
         removePoster: "ポスター削除",
+        posterGuide: "TMDBの検索結果からポスターを選択するか、画像URLを直接入力できます。",
         posterLocalOnly: "ポスターURLはReviewsシートのPosterUrl列に保存され、ほかの端末でも共有されます。",
         posterPreview: "ポスターのプレビュー",
         tmdbSearchTitle: "TMDBでポスターを探す",
@@ -421,7 +425,6 @@
         movieInfoOpenGuide: "映画情報を見る",
         movieInfoBadge: "映画情報",
         movieInfoSummaryGuide: "映画タイトルを押すと、ポスターや作品情報を確認できます。",
-        reviewMovieSearchGuide: "映画タイトルを入力すると、TMDBの検索候補が表示されます。",
         reviewMovieSearching: "映画を検索中...",
         reviewMovieSelected: "選択した映画",
         reviewMovieManualGuide: "候補を選ばない場合は、入力したタイトルのまま登録されます。",
@@ -433,6 +436,9 @@
         movieLogSameMovieMembers: "同じ映画を観たメンバー",
         movieLogViewerUnit: "人が鑑賞",
         movieLogReviewUnit: "件のレビュー",
+        movieLogOpenReview: "レビューを見る",
+        movieLogCloseReview: "レビューを閉じる",
+        movieLogNoComment: "感想はまだ書かれていません。",
         movieLogNoSameReviews: "同じ映画を記録したメンバーはまだいません。",
         autoPosterFill: "空のポスターを自動登録",
         autoPosterFilling: "自動登録中",
@@ -631,6 +637,7 @@
       const [selectedMovieInfo, setSelectedMovieInfo] = useState(null);
       const [isMovieInfoSearching, setIsMovieInfoSearching] = useState(false);
       const [movieInfoError, setMovieInfoError] = useState('');
+      const [expandedMovieReviewIds, setExpandedMovieReviewIds] = useState({});
       
       const todayStr = formatKSTDate(new Date().toISOString());
       const currentWeekNum = calculateWeek(todayStr);
@@ -685,6 +692,7 @@
         setSelectedMovieInfo(null);
         setMovieInfoError('');
         setIsMovieInfoSearching(false);
+        setExpandedMovieReviewIds({});
         setAppData({ reviews: [], posts: [], comments: [] });
         setIsLoading(false);
       };
@@ -808,6 +816,14 @@
         setSelectedMovieInfo(null);
         setMovieInfoError('');
         setIsMovieInfoSearching(false);
+        setExpandedMovieReviewIds({});
+      };
+
+      const toggleMovieReviewDetail = (reviewId) => {
+        setExpandedMovieReviewIds(prev => ({
+          ...prev,
+          [reviewId]: !prev[reviewId]
+        }));
       };
 
       const searchMovieInfo = async (queryOverride, targetOverride = movieInfoTarget) => {
@@ -819,6 +835,7 @@
         setMovieInfoError('');
         setMovieInfoResults([]);
         setSelectedMovieInfo(null);
+        setExpandedMovieReviewIds({});
 
         try {
           const language = appLang === 'ko' ? 'ko-KR' : 'ja-JP';
@@ -875,6 +892,7 @@
         setMovieInfoResults([]);
         setSelectedMovieInfo(null);
         setMovieInfoError('');
+        setExpandedMovieReviewIds({});
         searchMovieInfo(initialQuery, review);
       };
 
@@ -1701,7 +1719,6 @@
                       <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-teal-400" />
                     )}
                   </div>
-                  <p className="mt-1.5 text-[10px] text-slate-500 leading-relaxed">{t.reviewMovieSearchGuide}</p>
 
                   {selectedTmdbMovie && (
                     <div className="mt-2 flex items-center gap-3 rounded-xl border border-teal-500/40 bg-teal-500/10 p-2.5">
@@ -2768,7 +2785,7 @@
               onClick={closeMovieInfo}
             >
               <div
-                className="bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-6 w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200"
+                className="bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-6 w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200"
                 onClick={e => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
@@ -2889,16 +2906,47 @@
                     {matchingMovieReviews.length > 0 ? (
                       <div>
                         <h4 className="mb-2 text-[11px] font-semibold text-slate-400">{t.movieLogSameMovieMembers}</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {matchingMovieReviews.map(review => (
-                            <div key={review.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 py-2">
-                              <div className="min-w-0">
-                                <p className="truncate text-xs font-medium text-slate-200">{USER_EMOJIS[review.nickname]} {review.nickname}</p>
-                                <p className="mt-0.5 text-[10px] text-slate-500">{formatDateOnly(review.date)}</p>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                          {matchingMovieReviews.map(review => {
+                            const isReviewExpanded = !!expandedMovieReviewIds[review.id];
+                            const reviewComment = String((appLang === 'ko' ? review.commentKo : review.commentJp) || '').trim();
+
+                            return (
+                              <div key={review.id} className={`overflow-hidden rounded-lg border border-slate-700/70 bg-slate-900/60 transition-all ${isReviewExpanded ? 'lg:col-span-2' : ''}`}>
+                                <div className="flex items-center justify-between gap-3 px-3 py-2">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-xs font-medium text-slate-200">{USER_EMOJIS[review.nickname]} {review.nickname}</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">{formatDateOnly(review.date)}</p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleMovieReviewDetail(review.id)}
+                                    aria-expanded={isReviewExpanded}
+                                    title={isReviewExpanded ? t.movieLogCloseReview : t.movieLogOpenReview}
+                                    className="group/review-score inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-yellow-400/20 bg-slate-950/70 px-2.5 py-1.5 text-sm font-bold text-yellow-400 transition-colors hover:border-yellow-400/50 hover:bg-yellow-400/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/50"
+                                  >
+                                    <span>★ {Number(review.rating).toFixed(1)}</span>
+                                    <span className="text-[11px] text-slate-400 transition-transform group-hover/review-score:text-yellow-300" aria-hidden="true">
+                                      {isReviewExpanded ? '−' : '＋'}
+                                    </span>
+                                  </button>
+                                </div>
+
+                                {isReviewExpanded && (
+                                  <div className="border-t border-slate-700/60 bg-slate-950/35 px-3 py-3 sm:px-5 sm:py-4 animate-in fade-in slide-in-from-top-1 duration-150">
+                                    {reviewComment ? (
+                                      <SpoilerText
+                                        text={reviewComment}
+                                        className="block text-left text-xs sm:text-sm text-slate-300 whitespace-pre-wrap break-words leading-relaxed"
+                                      />
+                                    ) : (
+                                      <p className="text-xs text-slate-500">{t.movieLogNoComment}</p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              <span className="shrink-0 text-sm font-bold text-yellow-400">★ {Number(review.rating).toFixed(1)}</span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ) : (
@@ -2917,7 +2965,10 @@
                           <button
                             key={movie.id}
                             type="button"
-                            onClick={() => setSelectedMovieInfo(movie)}
+                            onClick={() => {
+                              setSelectedMovieInfo(movie);
+                              setExpandedMovieReviewIds({});
+                            }}
                             className={`flex min-w-0 items-center gap-2 rounded-lg border p-2 text-left transition-colors ${isSelected ? 'border-teal-400 bg-teal-500/10' : 'border-slate-700 bg-slate-800/40 hover:border-teal-500'}`}
                           >
                             <div className="w-9 h-12 shrink-0 overflow-hidden rounded bg-slate-800 flex items-center justify-center">
