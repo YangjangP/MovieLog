@@ -193,6 +193,13 @@
     // --- Google Apps Script URL ---
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbysA1wBydZ0E1m-zH8ckLYpShztE-NEuQSS859swuQ0d8oBqKODQBdY4KE-Wl4sU36i/exec";
 
+    // --- TMDB API 설정 ---
+    // 아래 두 값은 테스트용 자리표시자입니다. 실제 발급받은 값으로 교체해 주세요.
+    // 읽기 액세스 토큰을 우선 사용하고, 비어 있으면 API 키 방식으로 요청합니다.
+    const TMDB_API_READ_ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmMjcxNzI2NjkxZjY2YTA0NjQyZmEyMmQwYTEyOGU2YiIsIm5iZiI6MTc4MjM1Mzg4NC4wMjQ5OTk5LCJzdWIiOiI2YTNjOGZkYzRkMjJmNzMwYjEwY2Q4N2MiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.Q7S6sRmnfOhJZscl6ElQzKKy_N19S6lVs9V9a-Ua7ME";
+    const TMDB_API_KEY = "f271726691f66a04642fa22d0a128e6b";
+    const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
+
     // --- UI Strings Dictionary ---
     const UI_STRINGS = {
       ko: {
@@ -259,11 +266,22 @@
         goToday: "이번 달",
         addPoster: "포스터 추가",
         editPoster: "포스터 변경",
-        posterUrl: "포스터 이미지 주소",
+        posterUrl: "포스터 이미지 주소 직접 입력",
         imageSearch: "Google 이미지에서 찾기",
         removePoster: "포스터 삭제",
-        posterGuide: "검색 결과에서 사용할 이미지의 주소를 복사해 붙여넣어 주세요.",
-        posterPreview: "포스터 미리보기"
+        posterGuide: "TMDB 검색 결과에서 포스터를 선택하거나 이미지 주소를 직접 입력할 수 있습니다.",
+        posterPreview: "포스터 미리보기",
+        tmdbSearchTitle: "TMDB에서 포스터 찾기",
+        tmdbSearchPlaceholder: "영화 제목을 입력하세요",
+        tmdbSearchButton: "검색",
+        tmdbSearching: "TMDB 검색 중...",
+        tmdbNoResults: "포스터가 있는 검색 결과를 찾지 못했습니다.",
+        tmdbSearchError: "TMDB 검색 중 오류가 발생했습니다.",
+        tmdbAuthError: "TMDB API 키 또는 읽기 액세스 토큰을 확인해주세요.",
+        tmdbCredentialGuide: "HTML 상단의 TMDB_API_READ_ACCESS_TOKEN 또는 TMDB_API_KEY를 실제 값으로 교체하면 검색할 수 있습니다.",
+        tmdbSelected: "선택됨",
+        tmdbReleaseUnknown: "개봉 연도 미상",
+        tmdbAttribution: "This product uses the TMDB API but is not endorsed or certified by TMDB."
       },
       jp: {
         title: "Movie Log",
@@ -329,12 +347,23 @@
         goToday: "今月",
         addPoster: "ポスター追加",
         editPoster: "ポスター変更",
-        posterUrl: "ポスター画像URL",
+        posterUrl: "ポスター画像URLを直接入力",
         imageSearch: "Google画像で探す",
         removePoster: "ポスター削除",
-        posterGuide: "検索結果から使用する画像のURLをコピーして貼り付けてください。",
+        posterGuide: "TMDBの検索結果からポスターを選択するか、画像URLを直接入力できます。",
         posterLocalOnly: "ポスターURLはReviewsシートのPosterUrl列に保存され、ほかの端末でも共有されます。",
-        posterPreview: "ポスターのプレビュー"
+        posterPreview: "ポスターのプレビュー",
+        tmdbSearchTitle: "TMDBでポスターを探す",
+        tmdbSearchPlaceholder: "映画タイトルを入力してください",
+        tmdbSearchButton: "検索",
+        tmdbSearching: "TMDBを検索中...",
+        tmdbNoResults: "ポスター付きの検索結果が見つかりませんでした。",
+        tmdbSearchError: "TMDBの検索中にエラーが発生しました。",
+        tmdbAuthError: "TMDB APIキーまたは読み取りアクセストークンを確認してください。",
+        tmdbCredentialGuide: "HTML上部のTMDB_API_READ_ACCESS_TOKENまたはTMDB_API_KEYを実際の値に置き換えると検索できます。",
+        tmdbSelected: "選択中",
+        tmdbReleaseUnknown: "公開年不明",
+        tmdbAttribution: "This product uses the TMDB API but is not endorsed or certified by TMDB."
       }
     };
 
@@ -497,6 +526,10 @@
       });
       const [posterTarget, setPosterTarget] = useState(null);
       const [posterDraft, setPosterDraft] = useState('');
+      const [tmdbQuery, setTmdbQuery] = useState('');
+      const [tmdbResults, setTmdbResults] = useState([]);
+      const [isTmdbSearching, setIsTmdbSearching] = useState(false);
+      const [tmdbError, setTmdbError] = useState('');
       
       const todayStr = formatKSTDate(new Date().toISOString());
       const currentWeekNum = calculateWeek(todayStr);
@@ -517,9 +550,88 @@
 
       const getPosterUrl = (review) => review?.posterUrl || posterMap[review?.id] || '';
 
+      const closePosterEditor = () => {
+        setPosterTarget(null);
+        setPosterDraft('');
+        setTmdbQuery('');
+        setTmdbResults([]);
+        setTmdbError('');
+        setIsTmdbSearching(false);
+      };
+
       const openPosterEditor = (review) => {
         setPosterTarget(review);
         setPosterDraft(getPosterUrl(review));
+        setTmdbQuery(review.movieTitle || '');
+        setTmdbResults([]);
+        setTmdbError('');
+      };
+
+      const buildTmdbPosterUrl = (posterPath) =>
+        posterPath ? `${TMDB_IMAGE_BASE_URL}${posterPath}` : '';
+
+      const isConfiguredTmdbValue = (value) => {
+        const normalized = String(value || '').trim();
+        return !!normalized && !normalized.includes('REPLACE_ME');
+      };
+
+      const searchTmdbPosters = async (queryOverride) => {
+        const query = String(queryOverride ?? tmdbQuery).trim();
+        if (!query || isTmdbSearching) return;
+
+        const hasReadToken = isConfiguredTmdbValue(TMDB_API_READ_ACCESS_TOKEN);
+        const hasApiKey = isConfiguredTmdbValue(TMDB_API_KEY);
+
+        if (!hasReadToken && !hasApiKey) {
+          setTmdbResults([]);
+          setTmdbError(t.tmdbCredentialGuide);
+          return;
+        }
+
+        setIsTmdbSearching(true);
+        setTmdbError('');
+        setTmdbResults([]);
+
+        try {
+          const url = new URL('https://api.themoviedb.org/3/search/movie');
+          url.searchParams.set('query', query);
+          url.searchParams.set('include_adult', 'false');
+          url.searchParams.set('language', appLang === 'ko' ? 'ko-KR' : 'ja-JP');
+          url.searchParams.set('page', '1');
+
+          const headers = { accept: 'application/json' };
+          if (hasReadToken) {
+            headers.Authorization = `Bearer ${TMDB_API_READ_ACCESS_TOKEN.trim()}`;
+          } else {
+            url.searchParams.set('api_key', TMDB_API_KEY.trim());
+          }
+
+          const response = await fetch(url.toString(), { headers });
+          if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+              throw new Error('TMDB_AUTH_ERROR');
+            }
+            throw new Error(`TMDB_HTTP_${response.status}`);
+          }
+
+          const data = await response.json();
+          const results = (data.results || [])
+            .filter(movie => movie.poster_path)
+            .slice(0, 12);
+
+          setTmdbResults(results);
+          if (results.length === 0) setTmdbError(t.tmdbNoResults);
+        } catch (error) {
+          console.error('TMDB search error:', error);
+          setTmdbError(error.message === 'TMDB_AUTH_ERROR' ? t.tmdbAuthError : t.tmdbSearchError);
+        } finally {
+          setIsTmdbSearching(false);
+        }
+      };
+
+      const selectTmdbPoster = (movie) => {
+        const posterUrl = buildTmdbPosterUrl(movie.poster_path);
+        if (posterUrl) setPosterDraft(posterUrl);
       };
 
       const savePosterUrl = async (e) => {
@@ -547,8 +659,7 @@
           delete nextMap[posterTarget.id];
           setPosterMap(nextMap);
           localStorage.setItem('movieLogPosterMap', JSON.stringify(nextMap));
-          setPosterTarget(null);
-          setPosterDraft('');
+          closePosterEditor();
         } catch (error) {
           console.error('Error saving poster URL:', error);
           alert(appLang === 'ko' ? '포스터 저장 중 오류가 발생했습니다.' : 'ポスターの保存中にエラーが発生しました。');
@@ -579,8 +690,7 @@
           delete nextMap[posterTarget.id];
           setPosterMap(nextMap);
           localStorage.setItem('movieLogPosterMap', JSON.stringify(nextMap));
-          setPosterTarget(null);
-          setPosterDraft('');
+          closePosterEditor();
         } catch (error) {
           console.error('Error removing poster URL:', error);
           alert(appLang === 'ko' ? '포스터 삭제 중 오류가 발생했습니다.' : 'ポスターの削除中にエラーが発生しました。');
@@ -1819,9 +1929,9 @@
           </main>
 
           {posterTarget && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm px-4 animate-in fade-in duration-200">
-              <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
-                <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm px-3 sm:px-4 py-4 animate-in fade-in duration-200">
+              <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-6 w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="flex items-start justify-between gap-4 mb-5">
                   <div className="min-w-0">
                     <p className="text-xs text-teal-400 mb-1">{posterDraft.trim() ? t.editPoster : t.addPoster}</p>
                     <h3 className="text-lg font-bold text-white break-words">{posterTarget.movieTitle}</h3>
@@ -1829,7 +1939,7 @@
                   </div>
                   <button
                     type="button"
-                    onClick={() => { setPosterTarget(null); setPosterDraft(''); }}
+                    onClick={closePosterEditor}
                     className="text-slate-400 hover:text-white p-1 shrink-0"
                     aria-label={t.cancel}
                   >
@@ -1837,75 +1947,152 @@
                   </button>
                 </div>
 
-                {posterDraft.trim() && (
-                  <div className="mb-4 rounded-xl overflow-hidden border border-slate-700 bg-slate-950 flex justify-center">
-                    <img
-                      src={posterDraft.trim()}
-                      alt={t.posterPreview}
-                      className="max-h-64 w-auto object-contain"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                )}
-
-                <form onSubmit={savePosterUrl} className="space-y-3">
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">{t.posterUrl}</label>
+                <div className="rounded-xl border border-slate-700 bg-slate-800/30 p-3 sm:p-4 mb-4">
+                  <label className="block text-xs font-semibold text-teal-400 mb-2">{t.tmdbSearchTitle}</label>
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
-                      type="url"
-                      value={posterDraft}
-                      onChange={e => setPosterDraft(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                      type="search"
+                      value={tmdbQuery}
+                      onChange={e => setTmdbQuery(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          searchTmdbPosters();
+                        }
+                      }}
+                      placeholder={t.tmdbSearchPlaceholder}
+                      className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
                     />
+                    <button
+                      type="button"
+                      onClick={() => searchTmdbPosters()}
+                      disabled={isTmdbSearching || !tmdbQuery.trim()}
+                      className="sm:w-auto px-4 py-2.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isTmdbSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Film className="w-4 h-4" />}
+                      {isTmdbSearching ? t.tmdbSearching : t.tmdbSearchButton}
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => openGoogleImageSearch(posterTarget.movieTitle)}
-                    className="w-full bg-slate-800 border border-slate-700 hover:border-teal-400 hover:text-teal-400 px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Globe className="w-4 h-4" /> {t.imageSearch}
-                  </button>
+                  {tmdbError && (
+                    <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-300 leading-relaxed">
+                      {tmdbError}
+                    </div>
+                  )}
 
-                  <div className="rounded-lg bg-slate-800/50 border border-slate-700/60 p-3">
-                    <p className="text-[11px] text-slate-400 leading-relaxed">{t.posterGuide}</p>
-                    <p className="text-[11px] text-amber-400/80 leading-relaxed mt-1">{t.posterLocalOnly}</p>
-                  </div>
+                  {tmdbResults.length > 0 && (
+                    <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3">
+                      {tmdbResults.map(movie => {
+                        const posterUrl = buildTmdbPosterUrl(movie.poster_path);
+                        const isSelected = posterDraft === posterUrl;
+                        const releaseYear = movie.release_date ? movie.release_date.slice(0, 4) : t.tmdbReleaseUnknown;
+                        return (
+                          <button
+                            key={movie.id}
+                            type="button"
+                            onClick={() => selectTmdbPoster(movie)}
+                            className={`relative overflow-hidden rounded-lg border text-left transition-all ${isSelected ? 'border-teal-400 ring-2 ring-teal-400/50' : 'border-slate-700 hover:border-teal-500'}`}
+                            title={`${movie.title || movie.original_title} (${releaseYear})`}
+                          >
+                            <img
+                              src={posterUrl}
+                              alt={`${movie.title || movie.original_title} poster`}
+                              className="w-full aspect-[2/3] object-cover bg-slate-800"
+                              loading="lazy"
+                            />
+                            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent px-1.5 pt-7 pb-1.5">
+                              <span className="block text-[9px] sm:text-[10px] leading-tight font-semibold text-white line-clamp-2">{movie.title || movie.original_title}</span>
+                              <span className="block mt-0.5 text-[8px] sm:text-[9px] text-slate-300">{releaseYear}</span>
+                            </span>
+                            {isSelected && (
+                              <span className="absolute top-1 right-1 rounded-full bg-teal-500 px-1.5 py-0.5 text-[8px] font-bold text-slate-950 shadow-lg">
+                                {t.tmdbSelected}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
-                  <div className="flex flex-col-reverse sm:flex-row justify-between gap-2 pt-1">
-                    <div>
-                      {getPosterUrl(posterTarget) && (
-                        <button
-                          type="button"
-                          onClick={removePosterUrl}
-                          disabled={isSubmitting}
-                          className="w-full sm:w-auto px-4 py-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {t.removePoster}
-                        </button>
+                <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4 items-start">
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1.5">{t.posterPreview}</p>
+                    <div className="rounded-xl overflow-hidden border border-slate-700 bg-slate-950 min-h-[240px] flex items-center justify-center">
+                      {posterDraft.trim() ? (
+                        <img
+                          src={posterDraft.trim()}
+                          alt={t.posterPreview}
+                          className="w-full max-h-[360px] object-contain"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <span className="px-4 text-center text-xs text-slate-500">{t.tmdbSearchTitle}</span>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => { setPosterTarget(null); setPosterDraft(''); }}
-                        disabled={isSubmitting}
-                        className="flex-1 sm:flex-none px-4 py-2 text-sm bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {t.cancel}
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="flex-1 sm:flex-none px-4 py-2 text-sm bg-teal-500 text-slate-950 font-bold rounded-lg hover:bg-teal-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                      >
-                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                        {t.save}
-                      </button>
-                    </div>
                   </div>
-                </form>
+
+                  <form onSubmit={savePosterUrl} className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1.5">{t.posterUrl}</label>
+                      <input
+                        type="url"
+                        value={posterDraft}
+                        onChange={e => setPosterDraft(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openGoogleImageSearch(posterTarget.movieTitle)}
+                      className="w-full bg-slate-800 border border-slate-700 hover:border-teal-400 hover:text-teal-400 px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Globe className="w-4 h-4" /> {t.imageSearch}
+                    </button>
+
+                    <div className="rounded-lg bg-slate-800/50 border border-slate-700/60 p-3">
+                      <p className="text-[11px] text-slate-400 leading-relaxed">{t.posterGuide}</p>
+                      {t.posterLocalOnly && <p className="text-[11px] text-amber-400/80 leading-relaxed mt-1">{t.posterLocalOnly}</p>}
+                      <p className="text-[10px] text-slate-500 leading-relaxed mt-2">{t.tmdbAttribution}</p>
+                    </div>
+
+                    <div className="flex flex-col-reverse sm:flex-row justify-between gap-2 pt-1">
+                      <div>
+                        {getPosterUrl(posterTarget) && (
+                          <button
+                            type="button"
+                            onClick={removePosterUrl}
+                            disabled={isSubmitting}
+                            className="w-full sm:w-auto px-4 py-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {t.removePoster}
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={closePosterEditor}
+                          disabled={isSubmitting}
+                          className="flex-1 sm:flex-none px-4 py-2 text-sm bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {t.cancel}
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSubmitting || !posterDraft.trim()}
+                          className="flex-1 sm:flex-none px-4 py-2 text-sm bg-teal-500 text-slate-950 font-bold rounded-lg hover:bg-teal-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                          {t.save}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
               </div>
             </div>
           )}
