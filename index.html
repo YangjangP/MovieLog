@@ -193,11 +193,8 @@
     // --- Google Apps Script URL ---
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbysA1wBydZ0E1m-zH8ckLYpShztE-NEuQSS859swuQ0d8oBqKODQBdY4KE-Wl4sU36i/exec";
 
-    // --- TMDB API 설정 ---
-    // 아래 두 값은 테스트용 자리표시자입니다. 실제 발급받은 값으로 교체해 주세요.
-    // 읽기 액세스 토큰을 우선 사용하고, 비어 있으면 API 키 방식으로 요청합니다.
-    const TMDB_API_READ_ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmMjcxNzI2NjkxZjY2YTA0NjQyZmEyMmQwYTEyOGU2YiIsIm5iZiI6MTc4MjM1Mzg4NC4wMjQ5OTk5LCJzdWIiOiI2YTNjOGZkYzRkMjJmNzMwYjEwY2Q4N2MiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.Q7S6sRmnfOhJZscl6ElQzKKy_N19S6lVs9V9a-Ua7ME";
-    const TMDB_API_KEY = "f271726691f66a04642fa22d0a128e6b";
+    // --- TMDB 포스터 이미지 설정 ---
+    // TMDB 인증 정보는 HTML에 넣지 않고 Google Apps Script의 스크립트 속성에 저장합니다.
     const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
 
     // --- UI Strings Dictionary ---
@@ -277,8 +274,8 @@
         tmdbSearching: "TMDB 검색 중...",
         tmdbNoResults: "포스터가 있는 검색 결과를 찾지 못했습니다.",
         tmdbSearchError: "TMDB 검색 중 오류가 발생했습니다.",
-        tmdbAuthError: "TMDB API 키 또는 읽기 액세스 토큰을 확인해주세요.",
-        tmdbCredentialGuide: "HTML 상단의 TMDB_API_READ_ACCESS_TOKEN 또는 TMDB_API_KEY를 실제 값으로 교체하면 검색할 수 있습니다.",
+        tmdbAuthError: "TMDB 검색 서버의 인증 설정을 확인해주세요.",
+        tmdbCredentialGuide: "Apps Script의 스크립트 속성에 TMDB 인증 정보를 등록해주세요.",
         tmdbSelected: "선택됨",
         tmdbReleaseUnknown: "개봉 연도 미상",
         tmdbAttribution: "This product uses the TMDB API but is not endorsed or certified by TMDB."
@@ -359,8 +356,8 @@
         tmdbSearching: "TMDBを検索中...",
         tmdbNoResults: "ポスター付きの検索結果が見つかりませんでした。",
         tmdbSearchError: "TMDBの検索中にエラーが発生しました。",
-        tmdbAuthError: "TMDB APIキーまたは読み取りアクセストークンを確認してください。",
-        tmdbCredentialGuide: "HTML上部のTMDB_API_READ_ACCESS_TOKENまたはTMDB_API_KEYを実際の値に置き換えると検索できます。",
+        tmdbAuthError: "TMDB検索サーバーの認証設定を確認してください。",
+        tmdbCredentialGuide: "Apps ScriptのスクリプトプロパティにTMDB認証情報を登録してください。",
         tmdbSelected: "選択中",
         tmdbReleaseUnknown: "公開年不明",
         tmdbAttribution: "This product uses the TMDB API but is not endorsed or certified by TMDB."
@@ -570,51 +567,40 @@
       const buildTmdbPosterUrl = (posterPath) =>
         posterPath ? `${TMDB_IMAGE_BASE_URL}${posterPath}` : '';
 
-      const isConfiguredTmdbValue = (value) => {
-        const normalized = String(value || '').trim();
-        return !!normalized && !normalized.includes('REPLACE_ME');
-      };
-
       const searchTmdbPosters = async (queryOverride) => {
         const query = String(queryOverride ?? tmdbQuery).trim();
         if (!query || isTmdbSearching) return;
-
-        const hasReadToken = isConfiguredTmdbValue(TMDB_API_READ_ACCESS_TOKEN);
-        const hasApiKey = isConfiguredTmdbValue(TMDB_API_KEY);
-
-        if (!hasReadToken && !hasApiKey) {
-          setTmdbResults([]);
-          setTmdbError(t.tmdbCredentialGuide);
-          return;
-        }
 
         setIsTmdbSearching(true);
         setTmdbError('');
         setTmdbResults([]);
 
         try {
-          const url = new URL('https://api.themoviedb.org/3/search/movie');
-          url.searchParams.set('query', query);
-          url.searchParams.set('include_adult', 'false');
-          url.searchParams.set('language', appLang === 'ko' ? 'ko-KR' : 'ja-JP');
-          url.searchParams.set('page', '1');
+          const language = appLang === 'ko' ? 'ko-KR' : 'ja-JP';
+          const requestUrl =
+            SCRIPT_URL +
+            '?action=tmdbSearch' +
+            '&query=' + encodeURIComponent(query) +
+            '&language=' + encodeURIComponent(language) +
+            '&t=' + Date.now();
 
-          const headers = { accept: 'application/json' };
-          if (hasReadToken) {
-            headers.Authorization = `Bearer ${TMDB_API_READ_ACCESS_TOKEN.trim()}`;
-          } else {
-            url.searchParams.set('api_key', TMDB_API_KEY.trim());
-          }
+          const response = await fetch(requestUrl, {
+            method: 'GET',
+            cache: 'no-store'
+          });
 
-          const response = await fetch(url.toString(), { headers });
           if (!response.ok) {
-            if (response.status === 401 || response.status === 403) {
-              throw new Error('TMDB_AUTH_ERROR');
-            }
-            throw new Error(`TMDB_HTTP_${response.status}`);
+            throw new Error(`TMDB_PROXY_HTTP_${response.status}`);
           }
 
           const data = await response.json();
+
+          if (data.success === false) {
+            const error = new Error(data.message || t.tmdbSearchError);
+            error.code = data.code || '';
+            throw error;
+          }
+
           const results = (data.results || [])
             .filter(movie => movie.poster_path)
             .slice(0, 12);
@@ -622,8 +608,9 @@
           setTmdbResults(results);
           if (results.length === 0) setTmdbError(t.tmdbNoResults);
         } catch (error) {
-          console.error('TMDB search error:', error);
-          setTmdbError(error.message === 'TMDB_AUTH_ERROR' ? t.tmdbAuthError : t.tmdbSearchError);
+          console.error('TMDB proxy search error:', error);
+          const isAuthError = error.code === 'TMDB_AUTH_ERROR';
+          setTmdbError(isAuthError ? t.tmdbAuthError : (error.message || t.tmdbSearchError));
         } finally {
           setIsTmdbSearching(false);
         }
@@ -790,7 +777,7 @@
             id: generateId(), nickname: formData.nickname, date: formData.date, week: week,
             movieTitle: formData.movieTitle, rating: parseFloat(formData.rating),
             commentKo: reviewComment, commentJp: reviewComment,
-            rawComment: reviewComment, posterUrl: '', PosterUrl: '',
+            Comment: reviewComment, posterUrl: '', PosterUrl: '',
             hideFromSummary: !!formData.hideFromSummary,
             HideFromSummary: formData.hideFromSummary ? 'TRUE' : 'FALSE',
             createdAt: new Date().toISOString()
@@ -806,8 +793,8 @@
         try {
           const newPost = {
             id: generateId(), type: type, nickname: formData.nickname,
-            titleKo: formData.title, titleJp: formData.title, rawTitle: formData.title,
-            contentKo: formData.content, contentJp: formData.content, rawContent: formData.content,
+            titleKo: formData.title, titleJp: formData.title, Title: formData.title,
+            contentKo: formData.content, contentJp: formData.content, Content: formData.content,
             createdAt: new Date().toISOString()
           };
           await postDataToSheet('addPost', newPost);
@@ -821,7 +808,7 @@
         try {
           const newComment = {
             id: generateId(), parentId: parentId, parentType: parentType, nickname: formData.nickname,
-            commentKo: formData.comment, commentJp: formData.comment, rawComment: formData.comment,
+            commentKo: formData.comment, commentJp: formData.comment, Comment: formData.comment,
             createdAt: new Date().toISOString()
           };
           await postDataToSheet('addComment', newComment);
