@@ -559,6 +559,13 @@
 
       const isOwner = (item) => !!currentUser && item?.nickname === currentUser;
 
+      const CurrentUserBadge = ({ className = '' }) => (
+        <div className={`flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-300 ${className}`}>
+          <span className="text-base leading-none">{USER_EMOJIS[currentUser]}</span>
+          <span className="font-medium">{currentUser}</span>
+        </div>
+      );
+
       const findItemByType = (id, type) => {
         if (type === 'review') return appData.reviews.find(item => item.id === id);
         if (type === 'post') return appData.posts.find(item => item.id === id);
@@ -905,7 +912,7 @@
               action: 'sendFeedback',
               payload: {
                 type: formData.type,
-                nickname: currentUser,
+                nickname: formData.nickname,
                 content: formData.content.trim(),
                 language: appLang,
                 pageUrl: window.location.href,
@@ -1101,7 +1108,7 @@
       };
 
       const CommentSection = ({ parentId, parentType }) => {
-      const [commentForm, setCommentForm] = useState({ nickname: NICKNAMES[0], comment: '' });
+      const [commentForm, setCommentForm] = useState({ comment: '' });
       
       const targetComments = appData.comments
         .filter(c => c.parentId === parentId)
@@ -1119,9 +1126,7 @@
                   <div key={c.id} className="bg-slate-800/40 rounded-lg p-3 text-sm group">
                     {editingItem?.id === c.id ? (
                       <form onSubmit={handleEditSave} className="flex flex-col sm:flex-row gap-2">
-                        <select disabled value={currentUser} className="bg-slate-900 border border-slate-700 rounded px-2 py-2 sm:py-1 text-slate-300 text-sm cursor-not-allowed">
-                          {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
-                        </select>
+                        <CurrentUserBadge className="bg-slate-900 sm:w-auto" />
                         <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-400 min-h-[60px] resize-y" rows="2" />
                         <div className="flex justify-end gap-1">
                           <button type="submit" disabled={isSubmitting} className="text-teal-400 bg-slate-800 p-2 sm:p-1 hover:bg-slate-700 rounded"><Send className="w-4 h-4" /></button>
@@ -1154,13 +1159,7 @@
             <form onSubmit={(e) => {
               submitComment(e, commentForm, parentId, parentType).then(() => setCommentForm({...commentForm, comment: ''}));
             }} className="flex flex-col sm:flex-row gap-2">
-              <select
-                disabled
-                value={currentUser}
-                className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-300 w-full sm:w-auto cursor-not-allowed"
-              >
-                {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
+              <CurrentUserBadge className="w-full sm:w-auto" />
               <textarea 
                 required placeholder={t.writeComment}
                 value={commentForm.comment}
@@ -1177,7 +1176,7 @@
       };
 
       const ReviewForm = () => {
-        const [form, setForm] = useState({ nickname: NICKNAMES[0], date: todayStr, movieTitle: '', rating: 5.0, comment: '', includeComment: true, hideFromSummary: false });
+        const [form, setForm] = useState({ date: todayStr, movieTitle: '', rating: 5.0, comment: '', includeComment: true, hideFromSummary: false });
         return (
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl mb-8">
             <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2"><Film className="w-5 h-5 text-teal-400" />새 리뷰 작성</h2>
@@ -1188,9 +1187,7 @@
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-slate-400 mb-1">{t.nickname}</label>
-                  <select disabled value={currentUser} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 cursor-not-allowed">
-                    {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
+                  <CurrentUserBadge className="w-full" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-slate-400 mb-1">{t.date}</label>
@@ -1271,15 +1268,13 @@
       };
 
       const BoardForm = ({ type }) => {
-        const [form, setForm] = useState({ nickname: NICKNAMES[0], title: '', content: '' });
+        const [form, setForm] = useState({ title: '', content: '' });
         return (
           <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800 mb-6">
             <h3 className="font-semibold text-white mb-3">{t.writePost}</h3>
             <form onSubmit={e => submitPost(e, form, type).then(() => setForm({...form, title: '', content: ''}))} className="space-y-3">
               <div className="flex flex-col sm:flex-row gap-3">
-                <select disabled value={currentUser} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 w-full sm:w-auto cursor-not-allowed">
-                  {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
+                <CurrentUserBadge className="w-full sm:w-auto" />
                 <input type="text" required placeholder={t.postTitle} value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
               </div>
               <textarea required placeholder={t.postContent} rows="5" value={form.content} onChange={e => setForm({...form, content: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-3 text-sm text-white min-h-[120px] resize-y" />
@@ -1294,7 +1289,7 @@
       const FeedbackForm = () => {
         const [form, setForm] = useState({
           type: 'suggestion',
-          nickname: NICKNAMES[0],
+          nickname: currentUser,
           content: ''
         });
         const [feedbackStatus, setFeedbackStatus] = useState('idle');
@@ -1342,11 +1337,12 @@
                   <div>
                     <label className="block text-xs text-slate-400 mb-1.5">{t.feedbackNickname}</label>
                     <select
-                      disabled
-                      value={currentUser}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 cursor-not-allowed"
+                      value={form.nickname}
+                      onChange={e => setForm({ ...form, nickname: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
                     >
-                      {NICKNAMES.map(name => <option key={name} value={name}>{name}</option>)}
+                      <option value={currentUser}>{USER_EMOJIS[currentUser]} {currentUser}</option>
+                      <option value="Anonymous">{appLang === 'ko' ? '익명' : '匿名'}</option>
                     </select>
                   </div>
                 </div>
@@ -1433,9 +1429,7 @@
                     {editingItem?.id === r.id ? (
                       <form onSubmit={handleEditSave} className="space-y-3 mb-4">
                         <div className="flex flex-col sm:flex-row gap-2">
-                          <select disabled value={currentUser} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-300 w-full sm:w-auto cursor-not-allowed">
-                            {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
-                          </select>
+                          <CurrentUserBadge className="w-full sm:w-auto py-1.5" />
                           <input type="date" required value={editingItem.form.date} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, date: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
                           <input type="text" required value={editingItem.form.movieTitle} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, movieTitle: e.target.value } })} className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
                         </div>
@@ -1515,9 +1509,7 @@
               {editingItem?.id === p.id ? (
                 <form onSubmit={handleEditSave} className="space-y-3 mb-6">
                    <div className="flex flex-col sm:flex-row gap-2">
-                     <select disabled value={currentUser} className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-300 w-full sm:w-auto cursor-not-allowed">
-                       {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
-                     </select>
+                     <CurrentUserBadge className="w-full sm:w-auto" />
                      <input type="text" required value={editingItem.form.title} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, title: e.target.value } })} className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:border-teal-400" />
                    </div>
                    <textarea required value={editingItem.form.content} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, content: e.target.value } })} className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white min-h-[150px] resize-y focus:border-teal-400" rows="6" />
@@ -1823,9 +1815,7 @@
                       {editingItem?.id === r.id ? (
                         <form onSubmit={handleEditSave} className="space-y-3 mb-4">
                           <div className="flex flex-col sm:flex-row gap-2">
-                            <select disabled value={currentUser} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-300 w-full sm:w-auto cursor-not-allowed">
-                              {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
-                            </select>
+                            <CurrentUserBadge className="w-full sm:w-auto py-1.5" />
                             <input type="date" required value={editingItem.form.date} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, date: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
                             <input type="text" required value={editingItem.form.movieTitle} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, movieTitle: e.target.value } })} className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
                           </div>
@@ -1902,9 +1892,7 @@
                           {editingItem?.id === r.id ? (
                             <form onSubmit={handleEditSave} className="space-y-3 mb-4">
                               <div className="flex flex-col sm:flex-row gap-2">
-                                <select disabled value={currentUser} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-300 w-full sm:w-auto cursor-not-allowed">
-                                  {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
-                                </select>
+                                <CurrentUserBadge className="w-full sm:w-auto py-1.5" />
                                 <input type="date" required value={editingItem.form.date} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, date: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
                                 <input type="text" required value={editingItem.form.movieTitle} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, movieTitle: e.target.value } })} className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
                               </div>
