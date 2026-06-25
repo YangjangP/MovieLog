@@ -206,6 +206,13 @@
         navForum: "Forum",
         navUser: "User",
         navFeedback: "Feedback",
+        loginTitle: "Movie Log 입장",
+        loginGuide: "사용할 유저를 선택해주세요.",
+        loginUser: "유저 선택",
+        loginButton: "접속하기",
+        loggedInAs: "접속 중",
+        logout: "로그아웃",
+        ownerOnly: "본인이 작성한 항목만 수정하거나 삭제할 수 있습니다.",
         feedbackTitle: "오류 및 제안 보내기",
         feedbackIntro: "사이트 이용 중 발견한 오류나 개선 아이디어를 남겨주세요. 제출한 내용은 운영자에게 이메일로 전달됩니다.",
         feedbackType: "유형",
@@ -287,6 +294,13 @@
         navForum: "Forum",
         navUser: "User",
         navFeedback: "Feedback",
+        loginTitle: "Movie Logへ入る",
+        loginGuide: "使用するユーザーを選択してください。",
+        loginUser: "ユーザー選択",
+        loginButton: "ログイン",
+        loggedInAs: "ログイン中",
+        logout: "ログアウト",
+        ownerOnly: "自分が作成した項目のみ編集・削除できます。",
         feedbackTitle: "不具合・ご意見を送る",
         feedbackIntro: "サイトで見つけた不具合や改善案をお寄せください。送信内容は運営者へメールで届きます。",
         feedbackType: "種類",
@@ -501,6 +515,14 @@
       const [activeTab, setActiveTab] = useState('summary');
       const [isLoading, setIsLoading] = useState(true);
       const [isSubmitting, setIsSubmitting] = useState(false);
+      const [currentUser, setCurrentUser] = useState(() => {
+        const savedUser = localStorage.getItem('movieLogCurrentUser') || '';
+        return NICKNAMES.includes(savedUser) ? savedUser : '';
+      });
+      const [loginUser, setLoginUser] = useState(() => {
+        const savedUser = localStorage.getItem('movieLogCurrentUser') || '';
+        return NICKNAMES.includes(savedUser) ? savedUser : NICKNAMES[0];
+      });
 
       const [selectedPost, setSelectedPost] = useState(null);
       const [selectedUser, setSelectedUser] = useState(null);
@@ -535,6 +557,42 @@
 
       const t = UI_STRINGS[appLang];
 
+      const isOwner = (item) => !!currentUser && item?.nickname === currentUser;
+
+      const findItemByType = (id, type) => {
+        if (type === 'review') return appData.reviews.find(item => item.id === id);
+        if (type === 'post') return appData.posts.find(item => item.id === id);
+        if (type === 'comment') return appData.comments.find(item => item.id === id);
+        return null;
+      };
+
+      const handleLogin = (e) => {
+        e.preventDefault();
+        if (!NICKNAMES.includes(loginUser)) return;
+        localStorage.setItem('movieLogCurrentUser', loginUser);
+        setCurrentUser(loginUser);
+        setIsLoading(true);
+      };
+
+      const handleLogout = () => {
+        localStorage.removeItem('movieLogCurrentUser');
+        setCurrentUser('');
+        setLoginUser(NICKNAMES[0]);
+        setActiveTab('summary');
+        setSelectedPost(null);
+        setSelectedUser(null);
+        setEditingItem(null);
+        setItemToDelete(null);
+        setExpandedReviews({});
+        setPosterTarget(null);
+        setPosterDraft('');
+        setTmdbQuery('');
+        setTmdbResults([]);
+        setTmdbError('');
+        setAppData({ reviews: [], posts: [], comments: [] });
+        setIsLoading(false);
+      };
+
       useEffect(() => {
         const isLight = theme === 'light';
         document.body.classList.toggle('light-theme', isLight);
@@ -557,6 +615,7 @@
       };
 
       const openPosterEditor = (review) => {
+        if (!isOwner(review)) return;
         setPosterTarget(review);
         setPosterDraft(getPosterUrl(review));
         setTmdbQuery(review.movieTitle || '');
@@ -623,7 +682,7 @@
 
       const savePosterUrl = async (e) => {
         e.preventDefault();
-        if (!posterTarget || isSubmitting) return;
+        if (!posterTarget || !isOwner(posterTarget) || isSubmitting) return;
 
         const nextUrl = posterDraft.trim();
         setIsSubmitting(true);
@@ -656,7 +715,7 @@
       };
 
       const removePosterUrl = async () => {
-        if (!posterTarget || isSubmitting) return;
+        if (!posterTarget || !isOwner(posterTarget) || isSubmitting) return;
 
         setIsSubmitting(true);
         try {
@@ -755,8 +814,12 @@
       };
 
       useEffect(() => {
-        fetchData();
-      }, []);
+        if (currentUser) {
+          fetchData();
+        } else {
+          setIsLoading(false);
+        }
+      }, [currentUser]);
 
       const postDataToSheet = async (action, payload) => {
         await fetch(SCRIPT_URL, {
@@ -769,12 +832,13 @@
 
       const submitReview = async (e, formData) => {
         e.preventDefault();
+        if (!currentUser) return;
         setIsSubmitting(true);
         try {
           const week = calculateWeek(formData.date);
           const reviewComment = formData.comment || '';
           const newReview = {
-            id: generateId(), nickname: formData.nickname, date: formData.date, week: week,
+            id: generateId(), nickname: currentUser, date: formData.date, week: week,
             movieTitle: formData.movieTitle, rating: parseFloat(formData.rating),
             commentKo: reviewComment, commentJp: reviewComment,
             Comment: reviewComment, posterUrl: '', PosterUrl: '',
@@ -789,10 +853,11 @@
 
       const submitPost = async (e, formData, type) => {
         e.preventDefault();
+        if (!currentUser) return;
         setIsSubmitting(true);
         try {
           const newPost = {
-            id: generateId(), type: type, nickname: formData.nickname,
+            id: generateId(), type: type, nickname: currentUser,
             titleKo: formData.title, titleJp: formData.title, Title: formData.title,
             contentKo: formData.content, contentJp: formData.content, Content: formData.content,
             createdAt: new Date().toISOString()
@@ -804,10 +869,11 @@
 
       const submitComment = async (e, formData, parentId, parentType) => {
         e.preventDefault();
+        if (!currentUser) return;
         setIsSubmitting(true);
         try {
           const newComment = {
-            id: generateId(), parentId: parentId, parentType: parentType, nickname: formData.nickname,
+            id: generateId(), parentId: parentId, parentType: parentType, nickname: currentUser,
             commentKo: formData.comment, commentJp: formData.comment, Comment: formData.comment,
             createdAt: new Date().toISOString()
           };
@@ -826,7 +892,7 @@
               action: 'sendFeedback',
               payload: {
                 type: formData.type,
-                nickname: formData.nickname,
+                nickname: currentUser,
                 content: formData.content.trim(),
                 language: appLang,
                 pageUrl: window.location.href,
@@ -859,35 +925,95 @@
 
       const handleEditSave = async (e) => {
         e.preventDefault();
+        if (!editingItem || !currentUser) return;
+
+        const { id, type, form } = editingItem;
+        const targetItem = findItemByType(id, type);
+
+        if (!isOwner(targetItem)) {
+          alert(t.ownerOnly);
+          setEditingItem(null);
+          return;
+        }
+
         setIsSubmitting(true);
         try {
-          const { id, type, form } = editingItem;
-          
           if (type === 'review') {
             const week = calculateWeek(form.date);
-            const currentReview = appData.reviews.find(review => review.id === id);
             const payload = {
-              Nickname: form.nickname,
+              Nickname: currentUser,
               Date: form.date,
               Week: week,
               MovieTitle: form.movieTitle,
               Rating: parseFloat(form.rating),
               Comment: form.comment,
-              PosterUrl: currentReview ? getPosterUrl(currentReview) : '',
+              PosterUrl: getPosterUrl(targetItem),
               HideFromSummary: form.hideFromSummary ? 'TRUE' : 'FALSE'
             };
+
             await postDataToSheet('editItem', { sheetName: 'Reviews', id, payload });
-            updateDataAndCache(prev => ({ ...prev, reviews: prev.reviews.map(r => r.id === id ? { ...r, nickname: form.nickname, date: form.date, week, movieTitle: form.movieTitle, rating: payload.Rating, commentKo: form.comment, commentJp: form.comment, hideFromSummary: !!form.hideFromSummary } : r) }));
+            updateDataAndCache(prev => ({
+              ...prev,
+              reviews: prev.reviews.map(r => r.id === id ? {
+                ...r,
+                nickname: currentUser,
+                date: form.date,
+                week,
+                movieTitle: form.movieTitle,
+                rating: payload.Rating,
+                commentKo: form.comment,
+                commentJp: form.comment,
+                hideFromSummary: !!form.hideFromSummary
+              } : r)
+            }));
           } else if (type === 'post') {
-            const payload = { Nickname: form.nickname, Title: form.title, Content: form.content };
+            const payload = {
+              Nickname: currentUser,
+              Title: form.title,
+              Content: form.content
+            };
+
             await postDataToSheet('editItem', { sheetName: 'Posts', id, payload });
-            updateDataAndCache(prev => ({ ...prev, posts: prev.posts.map(p => p.id === id ? { ...p, nickname: form.nickname, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content } : p) }));
-            if (selectedPost && selectedPost.id === id) setSelectedPost(prev => ({ ...prev, nickname: form.nickname, titleKo: form.title, titleJp: form.title, contentKo: form.content, contentJp: form.content }));
+            updateDataAndCache(prev => ({
+              ...prev,
+              posts: prev.posts.map(p => p.id === id ? {
+                ...p,
+                nickname: currentUser,
+                titleKo: form.title,
+                titleJp: form.title,
+                contentKo: form.content,
+                contentJp: form.content
+              } : p)
+            }));
+
+            if (selectedPost && selectedPost.id === id) {
+              setSelectedPost(prev => ({
+                ...prev,
+                nickname: currentUser,
+                titleKo: form.title,
+                titleJp: form.title,
+                contentKo: form.content,
+                contentJp: form.content
+              }));
+            }
           } else if (type === 'comment') {
-            const payload = { Nickname: form.nickname, Comment: form.comment };
+            const payload = {
+              Nickname: currentUser,
+              Comment: form.comment
+            };
+
             await postDataToSheet('editItem', { sheetName: 'Comments', id, payload });
-            updateDataAndCache(prev => ({ ...prev, comments: prev.comments.map(c => c.id === id ? { ...c, nickname: form.nickname, commentKo: form.comment, commentJp: form.comment } : c) }));
+            updateDataAndCache(prev => ({
+              ...prev,
+              comments: prev.comments.map(c => c.id === id ? {
+                ...c,
+                nickname: currentUser,
+                commentKo: form.comment,
+                commentJp: form.comment
+              } : c)
+            }));
           }
+
           setEditingItem(null);
         } finally {
           setIsSubmitting(false);
@@ -895,13 +1021,28 @@
       };
 
       const requestDelete = (id, type) => {
+        const targetItem = findItemByType(id, type);
+
+        if (!isOwner(targetItem)) {
+          alert(t.ownerOnly);
+          return;
+        }
+
         setItemToDelete({ id, type });
       };
 
       const executeDelete = async () => {
         if (!itemToDelete) return;
+
         const { id, type } = itemToDelete;
-        
+        const targetItem = findItemByType(id, type);
+
+        if (!isOwner(targetItem)) {
+          alert(t.ownerOnly);
+          setItemToDelete(null);
+          return;
+        }
+
         setIsSubmitting(true);
         try {
           let sheetName = '';
@@ -919,10 +1060,11 @@
           } else if (type === 'comment') {
             updateDataAndCache(prev => ({ ...prev, comments: prev.comments.filter(c => c.id !== id) }));
           }
+
           setItemToDelete(null);
         } catch (error) {
           console.error("Error deleting item:", error);
-          alert("삭제 중 오류가 발생했습니다.");
+          alert(appLang === 'ko' ? '삭제 중 오류가 발생했습니다.' : '削除中にエラーが発生しました。');
         } finally {
           setIsSubmitting(false);
         }
@@ -964,7 +1106,7 @@
                   <div key={c.id} className="bg-slate-800/40 rounded-lg p-3 text-sm group">
                     {editingItem?.id === c.id ? (
                       <form onSubmit={handleEditSave} className="flex flex-col sm:flex-row gap-2">
-                        <select required value={editingItem.form.nickname} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, nickname: e.target.value } })} className="bg-slate-900 border border-slate-700 rounded px-2 py-2 sm:py-1 text-white text-sm focus:outline-none focus:border-teal-400">
+                        <select disabled value={currentUser} className="bg-slate-900 border border-slate-700 rounded px-2 py-2 sm:py-1 text-slate-300 text-sm cursor-not-allowed">
                           {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
                         </select>
                         <textarea required value={editingItem.form.comment} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, comment: e.target.value } })} className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-400 min-h-[60px] resize-y" rows="2" />
@@ -980,11 +1122,13 @@
                             <span className="font-medium text-slate-300 flex items-center gap-1">{USER_EMOJIS[c.nickname]} {c.nickname}</span>
                             <span className="text-[10px] sm:text-xs text-slate-500">{formatKSTDate(c.createdAt)}</span>
                           </div>
-                          {/* ✨ 수정/삭제 버튼 인라인 배치 ✨ */}
-                          <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
-                            <button onClick={() => setEditingItem({ id: c.id, type: 'comment', form: { nickname: c.nickname, comment: appLang === 'ko' ? c.commentKo : c.commentJp } })} className="text-slate-400 hover:text-teal-400 transition-colors p-1"><Edit2 className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => requestDelete(c.id, 'comment')} className="text-slate-400 hover:text-red-400 transition-colors p-1"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
+                          {/* 로그인한 작성자에게만 수정/삭제 버튼을 표시합니다. */}
+                          {isOwner(c) && (
+                            <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                              <button onClick={() => setEditingItem({ id: c.id, type: 'comment', form: { comment: appLang === 'ko' ? c.commentKo : c.commentJp } })} className="text-slate-400 hover:text-teal-400 transition-colors p-1"><Edit2 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => requestDelete(c.id, 'comment')} className="text-slate-400 hover:text-red-400 transition-colors p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          )}
                         </div>
                         <SpoilerText text={appLang === 'ko' ? c.commentKo : c.commentJp} className="block text-left text-slate-200 break-words whitespace-pre-wrap mt-1" />
                       </>
@@ -997,10 +1141,10 @@
             <form onSubmit={(e) => {
               submitComment(e, commentForm, parentId, parentType).then(() => setCommentForm({...commentForm, comment: ''}));
             }} className="flex flex-col sm:flex-row gap-2">
-              <select 
-                value={commentForm.nickname} 
-                onChange={e => setCommentForm({...commentForm, nickname: e.target.value})}
-                className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500 w-full sm:w-auto"
+              <select
+                disabled
+                value={currentUser}
+                className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-300 w-full sm:w-auto cursor-not-allowed"
               >
                 {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
@@ -1031,7 +1175,7 @@
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-slate-400 mb-1">{t.nickname}</label>
-                  <select value={form.nickname} onChange={e => setForm({...form, nickname: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500">
+                  <select disabled value={currentUser} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 cursor-not-allowed">
                     {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
@@ -1120,7 +1264,7 @@
             <h3 className="font-semibold text-white mb-3">{t.writePost}</h3>
             <form onSubmit={e => submitPost(e, form, type).then(() => setForm({...form, title: '', content: ''}))} className="space-y-3">
               <div className="flex flex-col sm:flex-row gap-3">
-                <select value={form.nickname} onChange={e => setForm({...form, nickname: e.target.value})} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white w-full sm:w-auto">
+                <select disabled value={currentUser} className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 w-full sm:w-auto cursor-not-allowed">
                   {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
                 <input type="text" required placeholder={t.postTitle} value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
@@ -1185,12 +1329,11 @@
                   <div>
                     <label className="block text-xs text-slate-400 mb-1.5">{t.feedbackNickname}</label>
                     <select
-                      value={form.nickname}
-                      onChange={e => setForm({ ...form, nickname: e.target.value })}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                      disabled
+                      value={currentUser}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 cursor-not-allowed"
                     >
                       {NICKNAMES.map(name => <option key={name} value={name}>{name}</option>)}
-                      <option value="Anonymous">{appLang === 'ko' ? '익명' : '匿名'}</option>
                     </select>
                   </div>
                 </div>
@@ -1277,7 +1420,7 @@
                     {editingItem?.id === r.id ? (
                       <form onSubmit={handleEditSave} className="space-y-3 mb-4">
                         <div className="flex flex-col sm:flex-row gap-2">
-                          <select required value={editingItem.form.nickname} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, nickname: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400 w-full sm:w-auto">
+                          <select disabled value={currentUser} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-300 w-full sm:w-auto cursor-not-allowed">
                             {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
                           </select>
                           <input type="date" required value={editingItem.form.date} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, date: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
@@ -1320,11 +1463,13 @@
                             <div className="flex flex-wrap gap-2 text-[11px] sm:text-xs text-slate-400 items-center mt-1.5">
                               <span className="bg-slate-800 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">{USER_EMOJIS[r.nickname]} {r.nickname}</span>
                               <span className="shrink-0">{formatDateOnly(r.date)} (Week {r.week})</span>
-                              {/* ✨ 수정/삭제 버튼 인라인 배치 ✨ */}
-                              <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ml-auto sm:ml-1 shrink-0">
-                                <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { nickname: r.nickname, date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp, hideFromSummary: !!r.hideFromSummary } })} className="text-slate-400 hover:text-teal-400 p-1"><Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
-                                <button onClick={() => requestDelete(r.id, 'review')} className="text-slate-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
-                              </div>
+                              {/* 로그인한 작성자에게만 수정/삭제 버튼을 표시합니다. */}
+                              {isOwner(r) && (
+                                <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ml-auto sm:ml-1 shrink-0">
+                                  <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp, hideFromSummary: !!r.hideFromSummary } })} className="text-slate-400 hover:text-teal-400 p-1"><Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
+                                  <button onClick={() => requestDelete(r.id, 'review')} className="text-slate-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
+                                </div>
+                              )}
                             </div>
                           </div>
                           {/* 별점 영역 최적화 (모바일에서 조금 더 작게) */}
@@ -1357,7 +1502,7 @@
               {editingItem?.id === p.id ? (
                 <form onSubmit={handleEditSave} className="space-y-3 mb-6">
                    <div className="flex flex-col sm:flex-row gap-2">
-                     <select required value={editingItem.form.nickname} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, nickname: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:border-teal-400 w-full sm:w-auto">
+                     <select disabled value={currentUser} className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-slate-300 w-full sm:w-auto cursor-not-allowed">
                        {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
                      </select>
                      <input type="text" required value={editingItem.form.title} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, title: e.target.value } })} className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:border-teal-400" />
@@ -1376,10 +1521,12 @@
                     <div className="text-sm text-slate-400 flex flex-wrap gap-3 items-center border-b border-slate-800 pb-4">
                       <span className="flex items-center gap-1">{USER_EMOJIS[p.nickname]} {p.nickname}</span>
                       <span>{formatKSTDate(p.createdAt)}</span>
-                      <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ml-auto">
-                        <button onClick={() => setEditingItem({ id: p.id, type: 'post', form: { nickname: p.nickname, title: appLang === 'ko' ? p.titleKo : p.titleJp, content: appLang === 'ko' ? p.contentKo : p.contentJp } })} className="text-slate-400 hover:text-teal-400 p-1.5"><Edit2 className="w-4 h-4" /></button>
-                        <button onClick={() => requestDelete(p.id, 'post')} className="text-slate-400 hover:text-red-400 p-1.5"><Trash2 className="w-4 h-4" /></button>
-                      </div>
+                      {isOwner(p) && (
+                        <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ml-auto">
+                          <button onClick={() => setEditingItem({ id: p.id, type: 'post', form: { title: appLang === 'ko' ? p.titleKo : p.titleJp, content: appLang === 'ko' ? p.contentKo : p.contentJp } })} className="text-slate-400 hover:text-teal-400 p-1.5"><Edit2 className="w-4 h-4" /></button>
+                          <button onClick={() => requestDelete(p.id, 'post')} className="text-slate-400 hover:text-red-400 p-1.5"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <SpoilerText text={appLang === 'ko' ? p.contentKo : p.contentJp} className="block text-left text-slate-200 whitespace-pre-wrap min-h-[100px] mb-8 break-words leading-relaxed" />
@@ -1561,8 +1708,8 @@
                             key={review.id}
                             type="button"
                             onClick={() => openPosterEditor(review)}
-                            className="poster-card relative block w-full min-w-0 aspect-[3/4] overflow-hidden rounded-[4px] sm:rounded-lg border border-slate-700/80 bg-slate-800 text-left hover:border-teal-400 hover:ring-1 hover:ring-teal-400/50 transition-all group"
-                            title={posterUrl ? t.editPoster : t.addPoster}
+                            className={`poster-card relative block w-full min-w-0 aspect-[3/4] overflow-hidden rounded-[4px] sm:rounded-lg border border-slate-700/80 bg-slate-800 text-left transition-all group ${isOwner(review) ? 'hover:border-teal-400 hover:ring-1 hover:ring-teal-400/50 cursor-pointer' : 'cursor-default'}`}
+                            title={isOwner(review) ? (posterUrl ? t.editPoster : t.addPoster) : review.movieTitle}
                           >
                             <span className="absolute inset-0 flex items-center justify-center bg-slate-800 text-slate-500 group-hover:text-teal-400 text-base sm:text-2xl">＋</span>
                             {posterUrl && (
@@ -1663,7 +1810,7 @@
                       {editingItem?.id === r.id ? (
                         <form onSubmit={handleEditSave} className="space-y-3 mb-4">
                           <div className="flex flex-col sm:flex-row gap-2">
-                            <select required value={editingItem.form.nickname} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, nickname: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400 w-full sm:w-auto">
+                            <select disabled value={currentUser} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-300 w-full sm:w-auto cursor-not-allowed">
                               {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
                             </select>
                             <input type="date" required value={editingItem.form.date} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, date: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
@@ -1706,10 +1853,12 @@
                               <div className="flex flex-wrap gap-2 text-[11px] sm:text-xs text-slate-400 items-center mt-1.5">
                                 <span className="bg-slate-800 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">{USER_EMOJIS[r.nickname]} {r.nickname}</span>
                                 <span className="shrink-0">{formatDateOnly(r.date)} (Week {r.week})</span>
-                                <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ml-auto sm:ml-1 shrink-0">
-                                  <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { nickname: r.nickname, date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp, hideFromSummary: !!r.hideFromSummary } })} className="text-slate-400 hover:text-teal-400 p-1"><Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
-                                  <button onClick={() => requestDelete(r.id, 'review')} className="text-slate-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
-                                </div>
+                                {isOwner(r) && (
+                                  <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ml-auto sm:ml-1 shrink-0">
+                                    <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp, hideFromSummary: !!r.hideFromSummary } })} className="text-slate-400 hover:text-teal-400 p-1"><Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
+                                    <button onClick={() => requestDelete(r.id, 'review')} className="text-slate-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <div className="bg-slate-800/80 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-center shrink-0 flex flex-col items-center justify-center border border-slate-700/50 shadow-inner">
@@ -1740,7 +1889,7 @@
                           {editingItem?.id === r.id ? (
                             <form onSubmit={handleEditSave} className="space-y-3 mb-4">
                               <div className="flex flex-col sm:flex-row gap-2">
-                                <select required value={editingItem.form.nickname} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, nickname: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400 w-full sm:w-auto">
+                                <select disabled value={currentUser} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-300 w-full sm:w-auto cursor-not-allowed">
                                   {NICKNAMES.map(n => <option key={n} value={n}>{n}</option>)}
                                 </select>
                                 <input type="date" required value={editingItem.form.date} onChange={e => setEditingItem({ ...editingItem, form: { ...editingItem.form, date: e.target.value } })} className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-teal-400" />
@@ -1789,9 +1938,13 @@
                                     <span className="bg-slate-800 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">{USER_EMOJIS[r.nickname]} {r.nickname}</span>
                                     <span className="shrink-0">{formatDateOnly(r.date)} (Week {r.week})</span>
                                     <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ml-auto sm:ml-1 shrink-0">
-                                      <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { nickname: r.nickname, date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp, hideFromSummary: !!r.hideFromSummary } })} className="text-slate-400 hover:text-teal-400 p-1"><Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
-                                      <button onClick={() => requestDelete(r.id, 'review')} className="text-slate-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
-                                      <div className="w-px h-3 bg-slate-700 self-center mx-0.5"></div>
+                                      {isOwner(r) && (
+                                        <>
+                                          <button onClick={() => setEditingItem({ id: r.id, type: 'review', form: { date: formatDateOnly(r.date), movieTitle: r.movieTitle, rating: r.rating, comment: appLang === 'ko' ? r.commentKo : r.commentJp, hideFromSummary: !!r.hideFromSummary } })} className="text-slate-400 hover:text-teal-400 p-1"><Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
+                                          <button onClick={() => requestDelete(r.id, 'review')} className="text-slate-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
+                                          <div className="w-px h-3 bg-slate-700 self-center mx-0.5"></div>
+                                        </>
+                                      )}
                                       <button onClick={() => toggleReviewExpand(r.id)} className="text-slate-400 hover:text-white p-1" title="닫기"><X className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
                                     </div>
                                   </div>
@@ -1850,6 +2003,61 @@
         );
       };
 
+      if (!currentUser) {
+        return (
+          <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-slate-950">
+            <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-2xl">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-teal-500/20 text-teal-400 flex items-center justify-center mb-4">
+                <Film className="w-7 h-7" />
+              </div>
+              <h1 className="text-2xl font-black text-teal-400 text-center">{t.loginTitle}</h1>
+              <p className="mt-2 text-sm text-slate-400 text-center">{t.loginGuide}</p>
+
+              <form onSubmit={handleLogin} className="mt-6 space-y-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1.5">{t.loginUser}</label>
+                  <select
+                    value={loginUser}
+                    onChange={e => setLoginUser(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  >
+                    {NICKNAMES.map(name => (
+                      <option key={name} value={name}>{USER_EMOJIS[name]} {name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-3 rounded-lg flex items-center justify-center gap-2"
+                >
+                  <User className="w-4 h-4" />
+                  {t.loginButton}
+                </button>
+              </form>
+
+              <div className="mt-5 flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded-full border border-slate-700 transition-colors"
+                >
+                  {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-teal-400" /> : <Moon className="w-3.5 h-3.5 text-teal-400" />}
+                  {theme === 'dark' ? t.themeToLight : t.themeToDark}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAppLang(t.langCode)}
+                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded-full border border-slate-700 transition-colors"
+                >
+                  <Globe className="w-3.5 h-3.5 text-teal-400" /> {t.toggleLang}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <>
           <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-20 shadow-lg">
@@ -1860,6 +2068,19 @@
                   <p className="text-xs text-slate-400 mt-0.5">{t.subtitle}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-full">
+                    <span>{t.loggedInAs}</span>
+                    <span className="font-semibold text-slate-200">{USER_EMOJIS[currentUser]} {currentUser}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-red-500/10 hover:text-red-400 text-xs px-3 py-1.5 rounded-full border border-slate-700 hover:border-red-500/30 transition-colors"
+                    title={t.logout}
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">{t.logout}</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
