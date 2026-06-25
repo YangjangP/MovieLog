@@ -298,7 +298,12 @@
         movieInfoChooseResult: "검색 결과가 다르다면 아래에서 다른 영화를 선택하세요.",
         movieInfoOriginalTitle: "원제",
         movieInfoNoPoster: "포스터 없음",
-        movieInfoOpenGuide: "영화 정보 보기"
+        movieInfoOpenGuide: "영화 정보 보기",
+        autoPosterFill: "빈 포스터 자동 채우기",
+        autoPosterFilling: "자동 등록 중",
+        autoPosterGuide: "포스터가 없는 내 기존 리뷰 전체를 TMDB 첫 검색 결과로 채웁니다. 자동 등록 후에도 각 포스터를 눌러 직접 변경할 수 있습니다.",
+        autoPosterNone: "자동으로 채울 빈 포스터가 없습니다.",
+        autoPosterDone: "포스터 자동 등록이 완료되었습니다."
       },
       jp: {
         title: "Movie Log",
@@ -400,7 +405,12 @@
         movieInfoChooseResult: "検索結果が異なる場合は、下から別の映画を選択してください。",
         movieInfoOriginalTitle: "原題",
         movieInfoNoPoster: "ポスターなし",
-        movieInfoOpenGuide: "映画情報を見る"
+        movieInfoOpenGuide: "映画情報を見る",
+        autoPosterFill: "空のポスターを自動登録",
+        autoPosterFilling: "自動登録中",
+        autoPosterGuide: "ポスターが未登録の自分の既存レビューを、TMDBの最初の検索結果でまとめて登録します。登録後も各ポスターを押して手動で変更できます。",
+        autoPosterNone: "自動登録できる空のポスターはありません。",
+        autoPosterDone: "ポスターの自動登録が完了しました。"
       }
     };
 
@@ -575,6 +585,15 @@
       const [tmdbResults, setTmdbResults] = useState([]);
       const [isTmdbSearching, setIsTmdbSearching] = useState(false);
       const [tmdbError, setTmdbError] = useState('');
+      const [posterBackfill, setPosterBackfill] = useState({
+        isRunning: false,
+        total: 0,
+        processed: 0,
+        saved: 0,
+        notFound: 0,
+        failed: 0,
+        finished: false
+      });
 
       // 영화 제목 클릭 시 표시하는 간단한 TMDB 정보 모달
       // 기존 Apps Script의 tmdbSearch 동작만 재사용합니다.
@@ -631,6 +650,7 @@
         setTmdbQuery('');
         setTmdbResults([]);
         setTmdbError('');
+        setPosterBackfill({ isRunning: false, total: 0, processed: 0, saved: 0, notFound: 0, failed: 0, finished: false });
         setMovieInfoTarget(null);
         setMovieInfoQuery('');
         setMovieInfoResults([]);
@@ -686,6 +706,42 @@
 
       const buildTmdbPosterUrl = (posterPath) =>
         posterPath ? `${TMDB_IMAGE_BASE_URL}${posterPath}` : '';
+
+      const wait = (milliseconds) => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+      // 기존 Apps Script의 tmdbSearch만 사용해 첫 번째 포스터 검색 결과를 가져옵니다.
+      // 검색 실패 시 리뷰 등록 자체에는 영향을 주지 않고 빈 포스터 상태로 남깁니다.
+      const fetchFirstTmdbPosterUrl = async (movieTitle) => {
+        const query = getTmdbInitialQuery(movieTitle);
+        if (!query) return '';
+
+        const language = appLang === 'ko' ? 'ko-KR' : 'ja-JP';
+        const requestUrl =
+          SCRIPT_URL +
+          '?action=tmdbSearch' +
+          '&query=' + encodeURIComponent(query) +
+          '&language=' + encodeURIComponent(language) +
+          '&t=' + Date.now();
+
+        const response = await fetch(requestUrl, {
+          method: 'GET',
+          cache: 'no-store'
+        });
+
+        if (!response.ok) {
+          throw new Error(`TMDB_PROXY_HTTP_${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success === false) {
+          const error = new Error(data.message || t.tmdbSearchError);
+          error.code = data.code || '';
+          throw error;
+        }
+
+        const firstMovieWithPoster = (data.results || []).find(movie => movie.poster_path);
+        return firstMovieWithPoster ? buildTmdbPosterUrl(firstMovieWithPoster.poster_path) : '';
+      };
 
       const closeMovieInfo = () => {
         setMovieInfoTarget(null);
@@ -987,6 +1043,106 @@
         return payload;
       };
 
+      const persistPosterForReview = async (reviewId, posterUrl) => {
+        if (!reviewId || !posterUrl) return;
+
+        await postDataToSheet('editItem', {
+          sheetName: 'Reviews',
+          id: reviewId,
+          payload: { PosterUrl: posterUrl }
+        });
+
+        updateDataAndCache(prev => ({
+          ...prev,
+          reviews: prev.reviews.map(review =>
+            review.id === reviewId ? { ...review, posterUrl } : review
+          )
+        }));
+
+        // 과거 버전에서 브라우저에만 저장된 포스터가 있다면 시트 값을 우선하도록 정리합니다.
+        setPosterMap(prev => {
+          if (!Object.prototype.hasOwnProperty.call(prev, reviewId)) return prev;
+          const next = { ...prev };
+          delete next[reviewId];
+          localStorage.setItem('movieLogPosterMap', JSON.stringify(next));
+          return next;
+        });
+      };
+
+      const autoFillMissingPosters = async (reviews) => {
+        if (posterBackfill.isRunning) return;
+
+        const targets = (reviews || []).filter(review =>
+          isOwner(review) && !getPosterUrl(review)
+        );
+
+        if (targets.length === 0) {
+          setPosterBackfill({
+            isRunning: false,
+            total: 0,
+            processed: 0,
+            saved: 0,
+            notFound: 0,
+            failed: 0,
+            finished: true
+          });
+          return;
+        }
+
+        setPosterBackfill({
+          isRunning: true,
+          total: targets.length,
+          processed: 0,
+          saved: 0,
+          notFound: 0,
+          failed: 0,
+          finished: false
+        });
+
+        let saved = 0;
+        let notFound = 0;
+        let failed = 0;
+        const searchCache = new Map();
+
+        for (let index = 0; index < targets.length; index++) {
+          const review = targets[index];
+          const queryKey = getTmdbInitialQuery(review.movieTitle).toLocaleLowerCase();
+
+          try {
+            let posterUrl = searchCache.get(queryKey);
+
+            if (posterUrl === undefined) {
+              posterUrl = await fetchFirstTmdbPosterUrl(review.movieTitle);
+              searchCache.set(queryKey, posterUrl || '');
+            }
+
+            if (posterUrl) {
+              await persistPosterForReview(review.id, posterUrl);
+              saved += 1;
+            } else {
+              notFound += 1;
+            }
+          } catch (error) {
+            console.warn('Automatic poster backfill failed:', review.movieTitle, error);
+            failed += 1;
+          }
+
+          const processed = index + 1;
+          setPosterBackfill({
+            isRunning: processed < targets.length,
+            total: targets.length,
+            processed,
+            saved,
+            notFound,
+            failed,
+            finished: processed === targets.length
+          });
+
+          // Apps Script와 TMDB에 요청이 한꺼번에 몰리지 않도록 순차 처리합니다.
+          if (processed < targets.length) await wait(350);
+        }
+      };
+
       const submitReview = async (e, formData) => {
         e.preventDefault();
         if (!currentUser) return;
@@ -1005,6 +1161,17 @@
           };
           await postDataToSheet('addReview', newReview);
           updateDataAndCache(prev => ({ ...prev, reviews: [newReview, ...prev.reviews] }));
+
+          // 새 리뷰는 등록 직후 TMDB 첫 검색 결과의 포스터를 자동 저장합니다.
+          // 검색 결과가 없거나 오류가 나도 리뷰는 정상적으로 등록된 상태를 유지합니다.
+          try {
+            const autoPosterUrl = await fetchFirstTmdbPosterUrl(newReview.movieTitle);
+            if (autoPosterUrl) {
+              await persistPosterForReview(newReview.id, autoPosterUrl);
+            }
+          } catch (error) {
+            console.warn('Automatic poster search failed:', newReview.movieTitle, error);
+          }
         } finally { setIsSubmitting(false); }
       };
 
@@ -1735,6 +1902,10 @@
       };
 
       const renderUserCalendar = (userReviews) => {
+        const missingPosterCount = userReviews.filter(review =>
+          isOwner(review) && !getPosterUrl(review)
+        ).length;
+        const canAutoFillPosters = selectedUser === currentUser;
         const year = calendarCursor.getFullYear();
         const month = calendarCursor.getMonth();
         const firstWeekday = new Date(year, month, 1).getDay();
@@ -1810,14 +1981,62 @@
                   ›
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={goToCurrentMonth}
-                className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:text-teal-400 hover:border-teal-400 transition-colors"
-              >
-                {t.goToday}
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={goToCurrentMonth}
+                  className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:text-teal-400 hover:border-teal-400 transition-colors"
+                >
+                  {t.goToday}
+                </button>
+                {canAutoFillPosters && (
+                  <button
+                    type="button"
+                    onClick={() => autoFillMissingPosters(userReviews)}
+                    disabled={posterBackfill.isRunning || missingPosterCount === 0}
+                    className="px-3 py-2 rounded-lg bg-teal-500 text-slate-950 border border-teal-400 text-xs font-bold hover:bg-teal-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                    title={t.autoPosterGuide}
+                  >
+                    {posterBackfill.isRunning && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    {posterBackfill.isRunning
+                      ? `${t.autoPosterFilling} ${posterBackfill.processed}/${posterBackfill.total}`
+                      : `${t.autoPosterFill} (${missingPosterCount})`}
+                  </button>
+                )}
+              </div>
             </div>
+
+            {canAutoFillPosters && (posterBackfill.isRunning || posterBackfill.finished) && (
+              <div className="mb-4 rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-3 text-xs text-slate-300">
+                {posterBackfill.isRunning ? (
+                  <>
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <span className="flex items-center gap-1.5 text-teal-400 font-semibold">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t.autoPosterFilling}
+                      </span>
+                      <span>{posterBackfill.processed}/{posterBackfill.total}</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                      <div
+                        className="h-full bg-teal-500 transition-all duration-300"
+                        style={{ width: `${posterBackfill.total ? (posterBackfill.processed / posterBackfill.total) * 100 : 0}%` }}
+                      ></div>
+                    </div>
+                  </>
+                ) : posterBackfill.total === 0 ? (
+                  <span className="text-slate-400">{t.autoPosterNone}</span>
+                ) : (
+                  <div>
+                    <p className="font-semibold text-teal-400">{t.autoPosterDone}</p>
+                    <p className="mt-1 text-slate-400">
+                      {appLang === 'ko'
+                        ? `등록 ${posterBackfill.saved}개 · 검색 결과 없음 ${posterBackfill.notFound}개 · 오류 ${posterBackfill.failed}개`
+                        : `登録 ${posterBackfill.saved}件 · 検索結果なし ${posterBackfill.notFound}件 · エラー ${posterBackfill.failed}件`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="w-full overflow-hidden rounded-xl sm:rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl">
               <div className="grid grid-cols-7 border-b border-slate-800 bg-slate-900">
@@ -1889,8 +2108,8 @@
 
             <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
               {appLang === 'ko'
-                ? '영화 항목을 누르면 포스터를 등록하거나 변경할 수 있습니다.'
-                : '映画の項目を押すと、ポスターを登録・変更できます。'}
+                ? '새 리뷰의 포스터는 TMDB에서 자동 등록됩니다. 포스터를 누르면 언제든 직접 검색하거나 변경할 수 있습니다.'
+                : '新しいレビューのポスターはTMDBから自動登録されます。ポスターを押すと、いつでも検索・変更できます。'}
             </p>
           </div>
         );
