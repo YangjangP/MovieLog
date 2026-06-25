@@ -139,6 +139,9 @@
 
     /* 포스터와 위험 버튼은 밝은 테마에서도 원래 대비를 유지 */
     body.light-theme .poster-card .text-white { color: #ffffff !important; }
+    body.light-theme .album-movie-title { color: #ffffff !important; }
+    body.light-theme .board-subnav button,
+    body.light-theme .board-subnav button svg { color: #ffffff !important; }
     body.light-theme button.bg-red-500.text-white { color: #ffffff !important; }
 
     body.light-theme .shadow-sm,
@@ -2640,7 +2643,7 @@
 
         return (
           <div className="animate-in fade-in duration-300">
-            <div className="mb-5 flex gap-1 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60 p-1">
+            <div className="board-subnav mb-5 flex gap-1 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60 p-1">
               {boardItems.map(item => (
                 <button
                   key={item.id}
@@ -2852,7 +2855,7 @@
                             </div>
                           )}
                           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent px-2 pb-2 pt-8">
-                            <p className="line-clamp-2 text-[10px] sm:text-xs font-semibold leading-tight text-white">{review.movieTitle}</p>
+                            <p className="album-movie-title line-clamp-2 text-[10px] sm:text-xs font-semibold leading-tight text-white">{review.movieTitle}</p>
                           </div>
                           <span className="absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full border border-white/20 bg-black/40"></span>
                           <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full border border-white/20 bg-black/40"></span>
