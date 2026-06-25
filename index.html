@@ -202,10 +202,25 @@
       ko: {
         title: "Movie Log",
         navSummary: "Summary",
+        navBoard: "Board",
+        navAlbum: "Album",
         navNotice: "Notice",
         navForum: "Forum",
         navUser: "User",
         navFeedback: "Feedback",
+        boardTitle: "Board",
+        boardIntro: "원하는 메뉴를 선택해주세요.",
+        boardNoticeDesc: "공지와 운영 안내를 확인합니다.",
+        boardForumDesc: "자유롭게 이야기를 나누고 댓글을 남깁니다.",
+        boardFeedbackDesc: "오류 신고와 개선 의견을 전달합니다.",
+        albumTitle: "Movie Album",
+        albumIntro: "지금까지 모두가 함께 기록한 영화들",
+        albumMovieCount: "편의 영화",
+        albumNoMovies: "아직 앨범에 표시할 영화가 없습니다.",
+        albumSearchPlaceholder: "영화 제목 또는 원제로 검색",
+        albumNoSearchResults: "검색 결과에 해당하는 영화가 없습니다.",
+        albumNoPoster: "NO COVER",
+        albumOpenMovie: "영화 정보와 멤버 리뷰 보기",
         loginTitle: "Movie Log 입장",
         loginGuide: "사용할 유저를 선택해주세요.",
         loginUser: "유저 선택",
@@ -325,10 +340,25 @@
       jp: {
         title: "Movie Log",
         navSummary: "Summary",
+        navBoard: "Board",
+        navAlbum: "Album",
         navNotice: "Notice",
         navForum: "Forum",
         navUser: "User",
         navFeedback: "Feedback",
+        boardTitle: "Board",
+        boardIntro: "メニューを選択してください。",
+        boardNoticeDesc: "お知らせや運営案内を確認します。",
+        boardForumDesc: "自由に話したり、コメントを残したりできます。",
+        boardFeedbackDesc: "不具合報告や改善案を送ります。",
+        albumTitle: "Movie Album",
+        albumIntro: "これまでみんなで記録した映画",
+        albumMovieCount: "本の映画",
+        albumNoMovies: "アルバムに表示する映画はまだありません。",
+        albumSearchPlaceholder: "映画タイトル・原題で検索",
+        albumNoSearchResults: "検索条件に一致する映画がありません。",
+        albumNoPoster: "NO COVER",
+        albumOpenMovie: "映画情報とメンバーのレビューを見る",
         loginTitle: "Movie Logへ入る",
         loginGuide: "使用するユーザーを選択してください。",
         loginUser: "ユーザー選択",
@@ -583,6 +613,8 @@
       const [appLang, setAppLang] = useState('ko');
       const [theme, setTheme] = useState(() => localStorage.getItem('movieLogTheme') === 'light' ? 'light' : 'dark');
       const [activeTab, setActiveTab] = useState('summary');
+      const [boardSection, setBoardSection] = useState(null);
+      const [albumSearch, setAlbumSearch] = useState('');
       const [isLoading, setIsLoading] = useState(true);
       const [isSubmitting, setIsSubmitting] = useState(false);
       const [currentUser, setCurrentUser] = useState(() => {
@@ -675,6 +707,8 @@
         setCurrentUser('');
         setLoginUser(NICKNAMES[0]);
         setActiveTab('summary');
+        setBoardSection(null);
+        setAlbumSearch('');
         setSelectedPost(null);
         setSelectedUser(null);
         setEditingItem(null);
@@ -920,6 +954,83 @@
             const dateB = formatDateOnly(b.date) || '';
             return dateB.localeCompare(dateA);
           });
+      };
+
+      const getAlbumMovieGroups = () => {
+        const groups = [];
+        const sortedReviews = [...appData.reviews].sort((a, b) => {
+          const dateA = formatDateOnly(a.date) || '';
+          const dateB = formatDateOnly(b.date) || '';
+          const dateCompare = dateB.localeCompare(dateA);
+          if (dateCompare !== 0) return dateCompare;
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        });
+
+        sortedReviews.forEach(review => {
+          const aliases = getMovieTitleAliases(review.movieTitle);
+          const posterUrl = getPosterUrl(review);
+          const matchedGroup = groups.find(group => {
+            if (posterUrl && group.posterUrls.has(posterUrl)) return true;
+            return aliases.some(alias => group.aliases.has(alias));
+          });
+
+          if (matchedGroup) {
+            matchedGroup.reviews.push(review);
+            aliases.forEach(alias => matchedGroup.aliases.add(alias));
+            if (posterUrl) matchedGroup.posterUrls.add(posterUrl);
+            if (!matchedGroup.posterUrl && posterUrl) {
+              matchedGroup.posterUrl = posterUrl;
+              matchedGroup.representative = review;
+            }
+            return;
+          }
+
+          groups.push({
+            id: review.id,
+            representative: review,
+            reviews: [review],
+            aliases: new Set(aliases),
+            posterUrls: new Set(posterUrl ? [posterUrl] : []),
+            posterUrl,
+            latestDate: formatDateOnly(review.date) || ''
+          });
+        });
+
+        return groups.map(group => {
+          const ratings = group.reviews
+            .map(review => Number(review.rating))
+            .filter(rating => Number.isFinite(rating));
+          const average = ratings.length
+            ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
+            : 0;
+          const memberCount = new Set(group.reviews.map(review => review.nickname)).size;
+
+          return {
+            ...group,
+            average,
+            memberCount,
+            reviewCount: group.reviews.length
+          };
+        }).sort((a, b) => {
+          // 가장 많은 멤버가 본 영화를 우선 표시합니다.
+          const memberCompare = b.memberCount - a.memberCount;
+          if (memberCompare !== 0) return memberCompare;
+
+          // 감상 인원이 같으면 리뷰 수, 평균 별점, 최근 관람일 순으로 정렬합니다.
+          const reviewCompare = b.reviewCount - a.reviewCount;
+          if (reviewCompare !== 0) return reviewCompare;
+
+          const averageCompare = b.average - a.average;
+          if (averageCompare !== 0) return averageCompare;
+
+          const dateCompare = String(b.latestDate || '').localeCompare(String(a.latestDate || ''));
+          if (dateCompare !== 0) return dateCompare;
+
+          return String(a.representative?.movieTitle || '').localeCompare(
+            String(b.representative?.movieTitle || ''),
+            appLang === 'ko' ? 'ko' : 'ja'
+          );
+        });
       };
 
       const MovieTitleButton = ({ review, className = '', truncate = false }) => (
@@ -2375,6 +2486,194 @@
         );
       };
 
+      const renderBoardHub = () => {
+        const boardItems = [
+          { id: 'notice', icon: Megaphone, label: t.navNotice, description: t.boardNoticeDesc },
+          { id: 'forum', icon: MessageSquare, label: t.navForum, description: t.boardForumDesc },
+          { id: 'feedback', icon: Lightbulb, label: t.navFeedback, description: t.boardFeedbackDesc }
+        ];
+
+        if (!boardSection) {
+          return (
+            <div className="animate-in fade-in slide-in-from-bottom-3 duration-300">
+              <div className="mb-5">
+                <h2 className="text-xl sm:text-2xl font-bold text-white">{t.boardTitle}</h2>
+                <p className="mt-1 text-sm text-slate-400">{t.boardIntro}</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                {boardItems.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setBoardSection(item.id);
+                      setSelectedPost(null);
+                      setEditingItem(null);
+                    }}
+                    className="group rounded-2xl border border-slate-800 bg-slate-900 p-5 text-left shadow-lg transition-all hover:-translate-y-0.5 hover:border-teal-500/60 hover:bg-slate-900/80"
+                  >
+                    <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 text-teal-400 transition-colors group-hover:bg-teal-500/15">
+                      <item.icon className="h-5 w-5" />
+                    </span>
+                    <span className="block text-base font-bold text-slate-200 transition-colors group-hover:text-teal-400">{item.label}</span>
+                    <span className="mt-1.5 block text-xs leading-relaxed text-slate-500">{item.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="animate-in fade-in duration-300">
+            <div className="mb-5 flex gap-1 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60 p-1">
+              {boardItems.map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setBoardSection(item.id);
+                    setSelectedPost(null);
+                    setEditingItem(null);
+                  }}
+                  className={`flex min-w-max flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs sm:text-sm transition-colors ${boardSection === item.id ? 'bg-teal-500 text-slate-950 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                >
+                  <item.icon className="h-4 w-4" /> {item.label}
+                </button>
+              ))}
+            </div>
+            {boardSection === 'notice' && renderBoard('notice')}
+            {boardSection === 'forum' && renderBoard('forum')}
+            {boardSection === 'feedback' && <FeedbackForm />}
+          </div>
+        );
+      };
+
+      const renderAlbum = () => {
+        const albumMovies = getAlbumMovieGroups();
+        const normalizedAlbumSearch = normalizeMovieTitleToken(albumSearch);
+        const filteredAlbumMovies = normalizedAlbumSearch
+          ? albumMovies.filter(movieGroup =>
+              Array.from(movieGroup.aliases).some(alias => alias.includes(normalizedAlbumSearch)) ||
+              normalizeMovieTitleToken(movieGroup.representative?.movieTitle).includes(normalizedAlbumSearch)
+            )
+          : albumMovies;
+
+        return (
+          <div className="animate-in fade-in slide-in-from-bottom-3 duration-400">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                  <Film className="h-6 w-6 text-teal-400" /> {t.albumTitle}
+                </h2>
+                <p className="mt-1 text-sm text-slate-400">{t.albumIntro}</p>
+              </div>
+              <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-400">
+                {normalizedAlbumSearch
+                  ? `${filteredAlbumMovies.length} / ${albumMovies.length}${t.albumMovieCount}`
+                  : `${albumMovies.length}${t.albumMovieCount}`}
+              </span>
+            </div>
+
+            {albumMovies.length > 0 && (
+              <div className="relative mb-6">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                <input
+                  type="search"
+                  value={albumSearch}
+                  onChange={e => setAlbumSearch(e.target.value)}
+                  placeholder={t.albumSearchPlaceholder}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900 py-3 pl-10 pr-11 text-sm text-white shadow-sm outline-none transition-colors placeholder:text-slate-500 focus:border-teal-400 focus:ring-1 focus:ring-teal-500"
+                />
+                {albumSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setAlbumSearch('')}
+                    className="absolute right-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-800 hover:text-white"
+                    aria-label={t.cancel}
+                    title={t.cancel}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {albumMovies.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 py-14 text-center text-sm text-slate-500">
+                {t.albumNoMovies}
+              </div>
+            ) : filteredAlbumMovies.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 py-14 text-center text-sm text-slate-500">
+                {t.albumNoSearchResults}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 md:grid-cols-4 lg:grid-cols-5">
+                {filteredAlbumMovies.map(movieGroup => {
+                  const review = movieGroup.representative;
+                  return (
+                    <button
+                      key={movieGroup.id}
+                      type="button"
+                      onClick={() => openMovieInfo(review)}
+                      className="group min-w-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/70 focus-visible:ring-offset-4 focus-visible:ring-offset-slate-950 rounded-lg"
+                      title={t.albumOpenMovie}
+                      aria-label={`${review.movieTitle} - ${t.albumOpenMovie}`}
+                    >
+                      <div className="relative rounded-[10px] border-[3px] border-slate-700 bg-slate-950 p-1.5 shadow-[5px_7px_0_rgba(0,0,0,0.32)] transition-all duration-200 group-hover:-translate-y-1 group-hover:border-teal-500/70 group-hover:shadow-[7px_10px_0_rgba(0,0,0,0.38)]">
+                        <div className="absolute inset-y-2 left-1 w-1 rounded-full bg-slate-800 shadow-inner"></div>
+                        <div className="relative ml-1.5 aspect-[2/3] overflow-hidden rounded-[5px] border border-slate-700 bg-slate-900">
+                          {movieGroup.posterUrl ? (
+                            <img
+                              src={movieGroup.posterUrl}
+                              alt={`${review.movieTitle} poster`}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                              onError={e => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-800 to-slate-950 px-3 text-center">
+                              <Film className="h-8 w-8 text-slate-600" />
+                              <span className="text-[10px] tracking-[0.18em] text-slate-500">{t.albumNoPoster}</span>
+                            </div>
+                          )}
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent px-2 pb-2 pt-8">
+                            <p className="line-clamp-2 text-[10px] sm:text-xs font-semibold leading-tight text-white">{review.movieTitle}</p>
+                          </div>
+                          <span className="absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full border border-white/20 bg-black/40"></span>
+                          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full border border-white/20 bg-black/40"></span>
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between gap-1 rounded bg-slate-900 px-1.5 py-1">
+                          <span className="truncate text-[9px] text-slate-500">VHS · MOVIE LOG</span>
+                          <span className="shrink-0 text-[10px] font-bold text-yellow-400">★ {movieGroup.average.toFixed(1)}</span>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-2 px-0.5">
+                        <span className="truncate text-[10px] text-slate-500">{movieGroup.memberCount}{t.movieLogViewerUnit}</span>
+                        <span className="shrink-0 text-[10px] text-teal-400 opacity-0 transition-opacity group-hover:opacity-100">ⓘ</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      };
+
       const moveCalendarMonth = (amount) => {
         setCalendarCursor(prev => new Date(prev.getFullYear(), prev.getMonth() + amount, 1));
       };
@@ -2928,7 +3227,7 @@
       return (
         <>
           <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-20 shadow-lg">
-            <div className="max-w-4xl mx-auto px-4 pt-4">
+            <div className="max-w-6xl mx-auto px-4 pt-4">
               <div className="flex justify-between items-center mb-4">
                 <div>
                   <h1 className="text-2xl font-black text-teal-400 tracking-tight">{t.title}</h1>
@@ -2964,14 +3263,21 @@
               <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
                 {[
                   { id: 'summary', icon: ClipboardList, label: t.navSummary },
-                  { id: 'notice', icon: Megaphone, label: t.navNotice },
-                  { id: 'forum', icon: MessageSquare, label: t.navForum },
-                  { id: 'user', icon: Users, label: t.navUser },
-                  { id: 'feedback', icon: Lightbulb, label: t.navFeedback }
+                  { id: 'board', icon: MessageSquare, label: t.navBoard },
+                  { id: 'album', icon: Film, label: t.navAlbum },
+                  { id: 'user', icon: Users, label: t.navUser }
                 ].map(tab => (
                   <button
                     key={tab.id}
-                    onClick={() => { setActiveTab(tab.id); setSelectedPost(null); setSelectedUser(null); setExpandedReviews({}); setPosterTarget(null); }}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      if (tab.id === 'board') setBoardSection(null);
+                      setSelectedPost(null);
+                      setSelectedUser(null);
+                      setExpandedReviews({});
+                      setPosterTarget(null);
+                      closeMovieInfo();
+                    }}
                     className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
                       ${activeTab === tab.id ? 'border-teal-400 text-teal-400 bg-teal-400/5' : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
                   >
@@ -2982,7 +3288,7 @@
             </div>
           </header>
 
-          <main className="w-full max-w-2xl lg:max-w-4xl mx-auto px-2.5 sm:px-4 py-6 sm:py-8 transition-[max-width] duration-300">
+          <main className={`w-full max-w-2xl mx-auto px-2.5 sm:px-4 py-6 sm:py-8 transition-[max-width] duration-300 ${activeTab === 'album' ? 'lg:max-w-6xl' : 'lg:max-w-4xl'}`}>
             {isLoading ? (
                <div className="flex flex-col items-center justify-center py-20 text-teal-500">
                  <Loader2 className="w-8 h-8 animate-spin mb-4" />
@@ -2991,10 +3297,9 @@
             ) : (
               <>
                 {activeTab === 'summary' && renderSummary()}
-                {activeTab === 'notice' && renderBoard('notice')}
-                {activeTab === 'forum' && renderBoard('forum')}
+                {activeTab === 'board' && renderBoardHub()}
+                {activeTab === 'album' && renderAlbum()}
                 {activeTab === 'user' && renderUser()}
-                {activeTab === 'feedback' && <FeedbackForm />}
               </>
             )}
           </main>
