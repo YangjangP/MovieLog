@@ -1128,17 +1128,23 @@
 
       const getAlbumMovieGroups = () => {
         const groups = [];
+        const isAlbumRepresentativeCandidate = (review) => review?.nickname !== 'Kani';
+
         const sortedReviews = [...appData.reviews].sort((a, b) => {
-          const dateA = formatDateOnly(a.date) || '';
-          const dateB = formatDateOnly(b.date) || '';
-          const dateCompare = dateB.localeCompare(dateA);
+          const dateA = formatDateOnly(a.date) || '9999-12-31';
+          const dateB = formatDateOnly(b.date) || '9999-12-31';
+          const dateCompare = dateA.localeCompare(dateB);
           if (dateCompare !== 0) return dateCompare;
-          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+
+          const createdAtA = new Date(a.createdAt || 0).getTime() || 0;
+          const createdAtB = new Date(b.createdAt || 0).getTime() || 0;
+          return createdAtA - createdAtB;
         });
 
         sortedReviews.forEach(review => {
           const aliases = getMovieTitleAliases(review.movieTitle);
           const posterUrl = getPosterUrl(review);
+          const reviewDate = formatDateOnly(review.date) || '';
           const matchedGroup = groups.find(group => {
             if (posterUrl && group.posterUrls.has(posterUrl)) return true;
             return aliases.some(alias => group.aliases.has(alias));
@@ -1148,9 +1154,17 @@
             matchedGroup.reviews.push(review);
             aliases.forEach(alias => matchedGroup.aliases.add(alias));
             if (posterUrl) matchedGroup.posterUrls.add(posterUrl);
-            if (!matchedGroup.posterUrl && posterUrl) {
-              matchedGroup.posterUrl = posterUrl;
+
+            if (!matchedGroup.hasEligibleRepresentative && isAlbumRepresentativeCandidate(review)) {
+              matchedGroup.id = review.id;
               matchedGroup.representative = review;
+              matchedGroup.posterUrl = posterUrl;
+              matchedGroup.hasEligibleRepresentative = true;
+            }
+
+            // Album 전체 정렬에 쓰는 최근 관람일만 별도로 갱신합니다.
+            if (reviewDate && reviewDate > matchedGroup.latestDate) {
+              matchedGroup.latestDate = reviewDate;
             }
             return;
           }
@@ -1162,7 +1176,8 @@
             aliases: new Set(aliases),
             posterUrls: new Set(posterUrl ? [posterUrl] : []),
             posterUrl,
-            latestDate: formatDateOnly(review.date) || ''
+            hasEligibleRepresentative: isAlbumRepresentativeCandidate(review),
+            latestDate: reviewDate
           });
         });
 
