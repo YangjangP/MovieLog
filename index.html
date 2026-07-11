@@ -575,6 +575,7 @@
         genreStatsEmpty: "분석할 수 있는 장르 정보가 아직 없습니다.",
         genreStatsIncluded: "편에 포함",
         genreStatsOther: "기타",
+        genreStatsOtherCombined: "개 장르 합산",
         genreStatsTasteInsight: "취향 해석",
         genreStatsDiscovery: "작은 발견",
         genreStatsViewingStyle: "감상 스타일",
@@ -737,6 +738,7 @@
         genreStatsEmpty: "分析できるジャンル情報がまだありません。",
         genreStatsIncluded: "本に含まれる",
         genreStatsOther: "その他",
+        genreStatsOtherCombined: "ジャンルを合算",
         genreStatsTasteInsight: "好みの解釈",
         genreStatsDiscovery: "小さな発見",
         genreStatsViewingStyle: "鑑賞スタイル",
@@ -4240,24 +4242,43 @@
           Number(genreStats.averageRating || 0),
           userReviews
         );
-        const chartGenres = genres.slice(0, 6);
         const totalGenreWeight = genres.reduce((sum, genre) => sum + Number(genre.weight || 0), 0) || 1;
-        const chartUsed = chartGenres.reduce(
-          (sum, genre) => sum + (Number(genre.weight || 0) / totalGenreWeight) * 100,
-          0
-        );
-        const remaining = Math.max(0, 100 - chartUsed);
+
+        // 도넛과 목록 모두 전체 장르를 같은 기준으로 사용합니다.
+        // 낮은 비중의 장르도 기타로 묶지 않고 각각 독립된 조각과 행으로 표시합니다.
         let cursor = 0;
-        const gradientParts = chartGenres.map((genre, index) => {
+        const gradientParts = genres.map((genre, index) => {
           const start = cursor;
           cursor += (Number(genre.weight || 0) / totalGenreWeight) * 100;
-          return `${GENRE_CHART_COLORS[index % GENRE_CHART_COLORS.length]} ${start.toFixed(2)}% ${cursor.toFixed(2)}%`;
+          const end = index === genres.length - 1 ? 100 : cursor;
+          return `${GENRE_CHART_COLORS[index % GENRE_CHART_COLORS.length]} ${start.toFixed(3)}% ${end.toFixed(3)}%`;
         });
-        if (remaining > 0.05) {
-          gradientParts.push(`${GENRE_CHART_COLORS[7]} ${cursor.toFixed(2)}% 100%`);
-        }
         const donutBackground = `conic-gradient(${gradientParts.join(', ')})`;
         const averageRating = Number(genreStats.averageRating || 0);
+
+        // 표시용 정수 퍼센트는 전체 장르를 대상으로 최대 나머지 방식으로 보정합니다.
+        // 따라서 화면에 표시되는 모든 행의 합계는 정확히 100%가 됩니다.
+        const rawGenreRows = genres.map(genre => ({
+          ...genre,
+          rawPercentage: (Number(genre.weight || 0) / totalGenreWeight) * 100
+        }));
+        const flooredPercentages = rawGenreRows.map(row => Math.floor(row.rawPercentage));
+        let percentagePointsLeft = 100 - flooredPercentages.reduce((sum, value) => sum + value, 0);
+        const remainderOrder = rawGenreRows
+          .map((row, index) => ({
+            index,
+            remainder: row.rawPercentage - Math.floor(row.rawPercentage)
+          }))
+          .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+        const displayPercentages = [...flooredPercentages];
+        for (let index = 0; index < percentagePointsLeft; index++) {
+          const target = remainderOrder[index % remainderOrder.length];
+          if (target) displayPercentages[target.index] += 1;
+        }
+        const genreListRows = rawGenreRows.map((row, index) => ({
+          ...row,
+          displayPercentage: displayPercentages[index]
+        }));
 
         return (
           <div className="space-y-5 animate-in fade-in slide-in-from-bottom-3 duration-500">
@@ -4362,25 +4383,31 @@
 
             <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6 shadow-lg">
               <div className="space-y-4">
-                {genres.slice(0, 10).map((genre, index) => (
+                {genreListRows.map((genre, index) => (
                   <div key={genre.id} className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3">
-                    <span className="text-center font-mono text-[10px] text-slate-600">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="text-center font-mono text-[10px] text-slate-600">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
                     <div className="min-w-0">
                       <div className="mb-1.5 flex min-w-0 items-center justify-between gap-3">
                         <span className="truncate text-xs font-semibold text-slate-200 sm:text-sm">{genre.name}</span>
-                        <span className="shrink-0 text-[9px] text-slate-500 sm:text-[10px]">{genre.movieCount}{t.genreStatsIncluded}</span>
+                        <span className="shrink-0 text-[9px] text-slate-500 sm:text-[10px]">
+                          {genre.movieCount}{t.genreStatsIncluded}
+                        </span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-slate-800">
                         <div
                           className="h-full rounded-full transition-all duration-700"
                           style={{
-                            width: `${Math.max(2, Number(genre.percentage || 0))}%`,
+                            width: `${Math.max(0.75, Number(genre.rawPercentage || 0))}%`,
                             backgroundColor: GENRE_CHART_COLORS[index % GENRE_CHART_COLORS.length]
                           }}
                         ></div>
                       </div>
                     </div>
-                    <span className="min-w-[44px] text-right text-sm font-black text-white">{Math.round(Number(genre.percentage || 0))}%</span>
+                    <span className="min-w-[44px] text-right text-sm font-black text-white">
+                      {genre.displayPercentage}%
+                    </span>
                   </div>
                 ))}
               </div>
