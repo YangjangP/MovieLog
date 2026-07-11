@@ -354,6 +354,76 @@
       background-image: radial-gradient(circle, rgba(89, 103, 170, 0.32) 1.2px, transparent 1.4px);
     }
 
+    /* 장르 취향 코멘트 영역: 밝은 테마 전용 대비 보정 */
+    body.light-theme .genre-persona-card {
+      background: linear-gradient(145deg, #fbfaf7 0%, #f4f5fb 100%) !important;
+      border-color: #c8cede !important;
+      box-shadow: 0 12px 28px rgba(46, 50, 82, 0.08);
+    }
+
+    body.light-theme .genre-persona-badge {
+      background-color: #eceefa !important;
+      border-color: #c4cae5 !important;
+      color: #4f5d9f !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+    }
+
+    body.light-theme .genre-axis-card {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    }
+
+    body.light-theme .genre-axis-card-primary {
+      background-color: #eef7f5 !important;
+      border-color: #bddbd5 !important;
+    }
+
+    body.light-theme .genre-axis-card-secondary {
+      background-color: #f1f0fa !important;
+      border-color: #ccc8e4 !important;
+    }
+
+    body.light-theme .genre-axis-card-primary .genre-axis-name {
+      color: #24796f !important;
+    }
+
+    body.light-theme .genre-axis-card-secondary .genre-axis-name {
+      color: #665aa0 !important;
+    }
+
+    body.light-theme .genre-axis-score {
+      color: #292d3c !important;
+    }
+
+    body.light-theme .genre-axis-genres {
+      color: #676c7c !important;
+    }
+
+    body.light-theme .genre-axis-description {
+      color: #3f4455 !important;
+    }
+
+    body.light-theme .genre-insight-card {
+      background-color: #fffdfa !important;
+      border-color: #d4d7e1 !important;
+      box-shadow: 0 1px 2px rgba(46, 50, 82, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    body.light-theme .genre-insight-card p:last-child {
+      color: #3b4050 !important;
+    }
+
+    body.light-theme .genre-insight-title-01 {
+      color: #397d76 !important;
+    }
+
+    body.light-theme .genre-insight-title-02 {
+      color: #665aa0 !important;
+    }
+
+    body.light-theme .genre-insight-title-03 {
+      color: #95671d !important;
+    }
+
 
     /* 모든 화면에서 도넛을 상단 중앙에 배치합니다. */
 
@@ -4219,7 +4289,7 @@
                 </div>
 
                 <div className="min-w-0">
-                  <div className="rounded-2xl border border-teal-500/30 bg-teal-500/5 p-5 sm:p-6">
+                  <div className="genre-persona-card rounded-2xl border border-teal-500/30 bg-teal-500/5 p-5 sm:p-6">
                     <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.18em] text-teal-400">
                       <Film className="h-4 w-4" /> TASTE TYPE
                     </div>
@@ -4230,7 +4300,7 @@
                         {persona.badges.map((badge, index) => (
                           <span
                             key={`${badge}-${index}`}
-                            className="rounded-full border border-teal-500/25 bg-slate-950/35 px-2.5 py-1 text-[9px] font-semibold text-teal-300 sm:text-[10px]"
+                            className="genre-persona-badge rounded-full border border-teal-500/25 bg-slate-950/35 px-2.5 py-1 text-[9px] font-semibold text-teal-300 sm:text-[10px]"
                           >
                             {badge}
                           </span>
@@ -4243,30 +4313,30 @@
                         {persona.axisDetails.map((axis, index) => (
                           <div
                             key={axis.id}
-                            className={`rounded-xl border p-3.5 ${index === 0 ? 'border-teal-500/30 bg-teal-500/5' : 'border-indigo-400/25 bg-indigo-400/5'}`}
+                            className={`genre-axis-card ${index === 0 ? 'genre-axis-card-primary' : 'genre-axis-card-secondary'} rounded-xl border p-3.5 ${index === 0 ? 'border-teal-500/30 bg-teal-500/5' : 'border-indigo-400/25 bg-indigo-400/5'}`}
                           >
                             <div className="flex items-center justify-between gap-3">
-                              <p className={`text-xs font-bold ${index === 0 ? 'text-teal-300' : 'text-indigo-300'}`}>{axis.name}</p>
-                              <span className="shrink-0 font-mono text-sm font-black text-white">{axis.score}%</span>
+                              <p className={`genre-axis-name text-xs font-bold ${index === 0 ? 'text-teal-300' : 'text-indigo-300'}`}>{axis.name}</p>
+                              <span className="genre-axis-score shrink-0 font-mono text-sm font-black text-white">{axis.score}%</span>
                             </div>
-                            <p className="mt-1.5 text-[10px] font-semibold text-slate-400">{axis.genres}</p>
-                            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-300">{axis.description}</p>
+                            <p className="genre-axis-genres mt-1.5 text-[10px] font-semibold text-slate-400">{axis.genres}</p>
+                            <p className="genre-axis-description mt-1.5 text-[11px] leading-relaxed text-slate-300">{axis.description}</p>
                           </div>
                         ))}
                       </div>
                     )}
 
                     <div className="mt-5 space-y-3">
-                      <div className="rounded-xl border border-slate-700/70 bg-slate-950/30 p-3.5 sm:p-4">
-                        <p className="text-[9px] font-bold tracking-[0.16em] text-teal-400">01 · {t.genreStatsTasteInsight}</p>
+                      <div className="genre-insight-card rounded-xl border border-slate-700/70 bg-slate-950/30 p-3.5 sm:p-4">
+                        <p className="genre-insight-title-01 text-[9px] font-bold tracking-[0.16em] text-teal-400">01 · {t.genreStatsTasteInsight}</p>
                         <p className="mt-2 text-sm leading-relaxed text-slate-300">{persona.summary}</p>
                       </div>
-                      <div className="rounded-xl border border-slate-700/70 bg-slate-950/30 p-3.5 sm:p-4">
-                        <p className="text-[9px] font-bold tracking-[0.16em] text-indigo-300">02 · {t.genreStatsDiscovery}</p>
+                      <div className="genre-insight-card rounded-xl border border-slate-700/70 bg-slate-950/30 p-3.5 sm:p-4">
+                        <p className="genre-insight-title-02 text-[9px] font-bold tracking-[0.16em] text-indigo-300">02 · {t.genreStatsDiscovery}</p>
                         <p className="mt-2 text-sm leading-relaxed text-slate-300">{persona.discovery}</p>
                       </div>
-                      <div className="rounded-xl border border-slate-700/70 bg-slate-950/30 p-3.5 sm:p-4">
-                        <p className="text-[9px] font-bold tracking-[0.16em] text-amber-300">03 · {t.genreStatsViewingStyle}</p>
+                      <div className="genre-insight-card rounded-xl border border-slate-700/70 bg-slate-950/30 p-3.5 sm:p-4">
+                        <p className="genre-insight-title-03 text-[9px] font-bold tracking-[0.16em] text-amber-300">03 · {t.genreStatsViewingStyle}</p>
                         <p className="mt-2 text-sm leading-relaxed text-slate-300">{persona.style}</p>
                       </div>
                     </div>
