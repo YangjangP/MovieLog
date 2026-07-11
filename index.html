@@ -282,6 +282,78 @@
         word-break: break-all;
       }
     }
+
+
+    /* ---------------------------------------------------------------------- */
+    /* Genre Taste / Cinema DNA                                               */
+    /* ---------------------------------------------------------------------- */
+    .genre-taste-shell {
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .genre-taste-shell::before {
+      content: '';
+      position: absolute;
+      width: 260px;
+      height: 260px;
+      right: -110px;
+      top: -130px;
+      border-radius: 9999px;
+      background: radial-gradient(circle, rgba(45, 212, 191, 0.18), transparent 68%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .genre-film-perforation {
+      background-image: radial-gradient(circle, rgba(148, 163, 184, 0.42) 1.2px, transparent 1.4px);
+      background-size: 11px 11px;
+      background-position: center;
+    }
+
+    .genre-donut {
+      position: relative;
+      border-radius: 9999px;
+      box-shadow: 0 18px 40px rgba(2, 6, 23, 0.34), inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .genre-donut::after {
+      content: '';
+      position: absolute;
+      inset: 17%;
+      border-radius: 9999px;
+      background: #0f172a;
+      border: 1px solid rgba(71, 85, 105, 0.8);
+      box-shadow: inset 0 8px 22px rgba(2, 6, 23, 0.42);
+    }
+
+    .genre-donut-label {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    body.light-theme .genre-taste-shell::before {
+      background: radial-gradient(circle, rgba(89, 103, 170, 0.16), transparent 68%);
+    }
+
+    body.light-theme .genre-donut::after {
+      background: #fffdfa;
+      border-color: #d0d3df;
+      box-shadow: inset 0 8px 22px rgba(46, 50, 82, 0.08);
+    }
+
+    body.light-theme .genre-film-perforation {
+      background-image: radial-gradient(circle, rgba(89, 103, 170, 0.32) 1.2px, transparent 1.4px);
+    }
+
   </style>
 </head>
 <body class="bg-slate-950 text-slate-200 font-sans selection:bg-teal-500 selection:text-white pb-20">
@@ -413,6 +485,22 @@
         viewDefault: "전체 보기",
         viewCompact: "별점 모아보기",
         viewCalendar: "캘린더 보기",
+        viewGenre: "취향 분석",
+        genreStatsEyebrow: "YOUR CINEMA DNA",
+        genreStatsTitle: "장르 취향 분석",
+        genreStatsIntro: "지금까지 남긴 감상 기록을 TMDB 장르 정보로 분석했습니다.",
+        genreStatsLoading: "필름을 돌려보며 장르 취향을 분석하고 있습니다...",
+        genreStatsError: "장르 통계를 불러오지 못했습니다.",
+        genreStatsRetry: "다시 분석",
+        genreStatsAnalyzed: "분석 완료",
+        genreStatsGenres: "발견한 장르",
+        genreStatsAverage: "평균 별점",
+        genreStatsUnresolved: "TMDB에서 찾지 못한 기록",
+        genreStatsUnit: "편",
+        genreStatsMethod: "한 영화에 여러 장르가 있으면 1편의 비중을 장르 수만큼 균등하게 나눠 계산합니다.",
+        genreStatsEmpty: "분석할 수 있는 장르 정보가 아직 없습니다.",
+        genreStatsIncluded: "편에 포함",
+        genreStatsOther: "기타",
         sortDesc: "별점 높은 순",
         sortAsc: "별점 낮은 순",
         previousMonth: "이전 달",
@@ -556,6 +644,22 @@
         viewDefault: "全体表示",
         viewCompact: "評価順表示",
         viewCalendar: "カレンダー表示",
+        viewGenre: "好み分析",
+        genreStatsEyebrow: "YOUR CINEMA DNA",
+        genreStatsTitle: "ジャンル傾向分析",
+        genreStatsIntro: "これまでの鑑賞記録をTMDBのジャンル情報で分析しました。",
+        genreStatsLoading: "フィルムを回しながらジャンル傾向を分析しています...",
+        genreStatsError: "ジャンル統計を読み込めませんでした。",
+        genreStatsRetry: "もう一度分析",
+        genreStatsAnalyzed: "分析済み",
+        genreStatsGenres: "見つかったジャンル",
+        genreStatsAverage: "平均評価",
+        genreStatsUnresolved: "TMDBで見つからなかった記録",
+        genreStatsUnit: "本",
+        genreStatsMethod: "複数ジャンルの映画は、1本分の比重をジャンル数で均等に分けて集計します。",
+        genreStatsEmpty: "分析できるジャンル情報がまだありません。",
+        genreStatsIncluded: "本に含まれる",
+        genreStatsOther: "その他",
         sortDesc: "評価が高い順",
         sortAsc: "評価が低い順",
         previousMonth: "前の月",
@@ -661,6 +765,133 @@
       if (value === true || value === 1) return true;
       const normalized = String(value ?? '').trim().toLowerCase();
       return ['true', '1', 'yes', 'y', 'on'].includes(normalized);
+    };
+
+    const parseGenreIds = (value) => {
+      if (Array.isArray(value)) {
+        return Array.from(new Set(value.map(Number).filter(Number.isFinite)));
+      }
+
+      const raw = String(value ?? '').trim();
+      if (!raw) return [];
+
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return Array.from(new Set(parsed.map(Number).filter(Number.isFinite)));
+        }
+      } catch (e) {
+        // 쉼표 구분 형식도 허용합니다.
+      }
+
+      return Array.from(new Set(
+        raw.split(',').map(value => Number(String(value).trim())).filter(Number.isFinite)
+      ));
+    };
+
+    const serializeGenreIds = (value) => parseGenreIds(value).join(',');
+
+    const GENRE_CHART_COLORS = [
+      '#2dd4bf', '#818cf8', '#f59e0b', '#f472b6',
+      '#38bdf8', '#a78bfa', '#fb7185', '#94a3b8'
+    ];
+
+    const GENRE_PERSONA_COPY = {
+      12: {
+        ko: '익숙한 풍경보다 다음 장면의 지평선을 먼저 궁금해하는 편이에요.',
+        jp: '見慣れた景色より、次の場面の地平線を先に知りたくなるタイプです。'
+      },
+      14: {
+        ko: '현실의 규칙이 살짝 흔들리는 순간에 가장 빠르게 마음을 빼앗겨요.',
+        jp: '現実のルールが少し揺らぐ瞬間に、いちばん早く心を奪われます。'
+      },
+      16: {
+        ko: '움직임과 색, 프레임 안의 작은 감정까지 놓치지 않는 편이에요.',
+        jp: '動きや色、フレームの中の小さな感情まで見逃さないタイプです。'
+      },
+      18: {
+        ko: '인물의 마음과 관계의 온도를 오래 따라가는 편이에요.',
+        jp: '人物の心と関係の温度を、じっくり追いかけるタイプです。'
+      },
+      27: {
+        ko: '두려움 그 자체보다, 두려움이 드러내는 사람의 얼굴을 즐겨 봐요.',
+        jp: '恐怖そのものより、恐怖が映し出す人の顔を楽しむタイプです。'
+      },
+      28: {
+        ko: '설명보다 움직임, 망설임보다 돌파를 선택하는 장면에 끌려요.',
+        jp: '説明より動き、ためらいより突破を選ぶ場面に惹かれます。'
+      },
+      35: {
+        ko: '세상이 조금 엉망이어도 웃을 틈을 찾아내는 감각이 있어요.',
+        jp: '世界が少し散らかっていても、笑える隙間を見つける感覚があります。'
+      },
+      36: {
+        ko: '이미 지나간 시대의 표정에서 지금의 질문을 찾아내는 편이에요.',
+        jp: '過ぎ去った時代の表情から、いまの問いを見つけるタイプです。'
+      },
+      53: {
+        ko: '평온한 장면 속 작은 불안을 누구보다 먼저 발견해요.',
+        jp: '穏やかな場面に潜む小さな不安を、誰より先に見つけます。'
+      },
+      80: {
+        ko: '선과 악의 경계보다 사람이 그 선을 넘는 순간에 더 관심이 많아요.',
+        jp: '善悪の境界より、人がその線を越える瞬間に強く惹かれます。'
+      },
+      99: {
+        ko: '각본 없는 현실에서도 가장 영화적인 순간을 찾아내는 편이에요.',
+        jp: '脚本のない現実からも、いちばん映画的な瞬間を見つけるタイプです。'
+      },
+      878: {
+        ko: '현실을 설명하는 대신 한 번 더 확장해 보는 상상을 좋아해요.',
+        jp: '現実を説明するより、もう一段拡張してみる想像が好きです。'
+      },
+      9648: {
+        ko: '정답보다 단서를, 결말보다 그곳에 도착하는 과정을 즐겨요.',
+        jp: '正解より手がかりを、結末よりそこへ辿り着く過程を楽しみます。'
+      },
+      10402: {
+        ko: '대사만큼 리듬과 침묵이 이야기하는 순간을 중요하게 봐요.',
+        jp: '台詞と同じくらい、リズムや沈黙が語る瞬間を大切にします。'
+      },
+      10749: {
+        ko: '말보다 늦게 도착하는 감정의 순간을 놓치지 않아요.',
+        jp: '言葉より遅れて届く感情の瞬間を見逃しません。'
+      },
+      10751: {
+        ko: '함께 살아가는 방식과 다정함이 남기는 여운을 오래 간직해요.',
+        jp: '共に生きる方法と、やさしさが残す余韻を長く抱えているタイプです。'
+      },
+      10752: {
+        ko: '거대한 사건 속에서도 개인이 감당하는 선택과 상처를 바라봐요.',
+        jp: '大きな出来事の中でも、個人が背負う選択と傷を見つめます。'
+      }
+    };
+
+    const buildGenrePersona = (genres, nickname, currentUser, language) => {
+      const top = genres?.[0];
+      if (!top) return { title: '', description: '' };
+
+      const isSelf = nickname === currentUser;
+      const subject = language === 'ko'
+        ? (isSelf ? '당신은' : `${nickname}님은`)
+        : (isSelf ? 'あなたは' : `${nickname}さんは`);
+      const title = language === 'ko'
+        ? `${subject} ${top.name} 마니아`
+        : `${subject}${top.name}マニア`;
+
+      const defaultCopy = language === 'ko'
+        ? '한 장르에 오래 머물며 자신만의 영화 지도를 만들어가고 있어요.'
+        : 'ひとつのジャンルにじっくり留まりながら、自分だけの映画地図を作っています。';
+      let description = GENRE_PERSONA_COPY[top.id]?.[language] || defaultCopy;
+
+      const second = genres?.[1];
+      if (second && Number(second.percentage) >= Number(top.percentage) * 0.55) {
+        description += language === 'ko'
+          ? ` 그리고 ${second.name}의 결도 자주 곁에 두고 있네요.`
+          : ` そして、${second.name}の手触りもよくそばに置いています。`;
+      }
+
+      return { title, description };
     };
 
     // 시트 헤더에 공백, 줄바꿈, 대소문자 차이가 있어도 값을 찾습니다.
@@ -782,6 +1013,9 @@
       const [userViewMode, setUserViewMode] = useState('default');
       const [ratingSortOrder, setRatingSortOrder] = useState('desc');
       const [expandedReviews, setExpandedReviews] = useState({});
+      const [genreStats, setGenreStats] = useState(null);
+      const [isGenreStatsLoading, setIsGenreStatsLoading] = useState(false);
+      const [genreStatsError, setGenreStatsError] = useState('');
       const [calendarCursor, setCalendarCursor] = useState(() => {
         const now = new Date();
         return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -826,6 +1060,62 @@
 
       const t = UI_STRINGS[appLang];
 
+      const loadGenreStats = async (nickname) => {
+        if (!nickname || isGenreStatsLoading) return;
+
+        setIsGenreStatsLoading(true);
+        setGenreStatsError('');
+
+        try {
+          const language = appLang === 'ko' ? 'ko-KR' : 'ja-JP';
+          const requestUrl =
+            SCRIPT_URL +
+            '?action=tmdbGenreStats' +
+            '&nickname=' + encodeURIComponent(nickname) +
+            '&language=' + encodeURIComponent(language) +
+            '&t=' + Date.now();
+
+          const response = await fetch(requestUrl, {
+            method: 'GET',
+            cache: 'no-store'
+          });
+
+          if (!response.ok) throw new Error(`GENRE_STATS_HTTP_${response.status}`);
+
+          const data = await response.json();
+          if (data.success === false) {
+            throw new Error(data.message || t.genreStatsError);
+          }
+
+          setGenreStats(data);
+
+          if (Array.isArray(data.reviewMetadata) && data.reviewMetadata.length > 0) {
+            const metadataMap = new Map(
+              data.reviewMetadata.map(item => [String(item.id), item])
+            );
+            updateDataAndCache(prev => ({
+              ...prev,
+              reviews: prev.reviews.map(review => {
+                const metadata = metadataMap.get(String(review.id));
+                return metadata
+                  ? {
+                      ...review,
+                      tmdbId: String(metadata.tmdbId || ''),
+                      genreIds: parseGenreIds(metadata.genreIds)
+                    }
+                  : review;
+              })
+            }));
+          }
+        } catch (error) {
+          console.error('TMDB genre stats error:', error);
+          setGenreStats(null);
+          setGenreStatsError(error.message || t.genreStatsError);
+        } finally {
+          setIsGenreStatsLoading(false);
+        }
+      };
+
       const isOwner = (item) => !!currentUser && item?.nickname === currentUser;
 
       const CurrentUserBadge = ({ className = '' }) => (
@@ -867,6 +1157,9 @@
         setEditingItem(null);
         setItemToDelete(null);
         setExpandedReviews({});
+        setGenreStats(null);
+        setIsGenreStatsLoading(false);
+        setGenreStatsError('');
         setPosterTarget(null);
         setPosterDraft('');
         setTmdbQuery('');
@@ -1497,6 +1790,8 @@
             movieTitle: item.MovieTitle || item.movieTitle,
             rating: item.Rating || item.rating,
             posterUrl: item.PosterUrl || item.posterUrl || '',
+            tmdbId: String(getNormalizedField(item, 'TmdbId', 'TMDBID', 'tmdbId') || ''),
+            genreIds: parseGenreIds(getNormalizedField(item, 'GenreIds', 'genreIds')),
             hideFromSummary: parseBoolean(getNormalizedField(item, 'HideFromSummary', 'hideFromSummary')),
             titleKo: item.TitleKo || item.titleKo,
             titleJp: item.TitleJp || item.titleJp,
@@ -1658,11 +1953,17 @@
           const selectedPosterUrl = formData.selectedTmdbMovie?.poster_path
             ? buildTmdbPosterUrl(formData.selectedTmdbMovie.poster_path)
             : '';
+          const selectedTmdbId = formData.selectedTmdbMovie?.id
+            ? String(formData.selectedTmdbMovie.id)
+            : '';
+          const selectedGenreIds = parseGenreIds(formData.selectedTmdbMovie?.genre_ids);
           const newReview = {
             id: generateId(), nickname: currentUser, date: formData.date, week: week,
             movieTitle: formData.movieTitle, rating: parseFloat(formData.rating),
             commentKo: reviewComment, commentJp: reviewComment,
             Comment: reviewComment, posterUrl: selectedPosterUrl, PosterUrl: selectedPosterUrl,
+            tmdbId: selectedTmdbId, TmdbId: selectedTmdbId,
+            genreIds: selectedGenreIds, GenreIds: serializeGenreIds(selectedGenreIds),
             hideFromSummary: !!formData.hideFromSummary,
             HideFromSummary: formData.hideFromSummary ? 'TRUE' : 'FALSE',
             createdAt: new Date().toISOString()
@@ -1761,9 +2062,16 @@
         try {
           if (type === 'review') {
             const week = calculateWeek(form.date);
+            const titleChanged = String(form.movieTitle || '').trim() !== String(targetItem.movieTitle || '').trim();
             const nextPosterUrl = form.selectedTmdbMovie
               ? buildTmdbPosterUrl(form.selectedTmdbMovie.poster_path)
               : getPosterUrl(targetItem);
+            const nextTmdbId = form.selectedTmdbMovie?.id
+              ? String(form.selectedTmdbMovie.id)
+              : (titleChanged ? '' : String(targetItem.tmdbId || ''));
+            const nextGenreIds = form.selectedTmdbMovie
+              ? parseGenreIds(form.selectedTmdbMovie.genre_ids)
+              : (titleChanged ? [] : parseGenreIds(targetItem.genreIds));
             const payload = {
               Nickname: currentUser,
               Date: form.date,
@@ -1772,6 +2080,8 @@
               Rating: parseFloat(form.rating),
               Comment: form.comment,
               PosterUrl: nextPosterUrl,
+              TmdbId: nextTmdbId,
+              GenreIds: serializeGenreIds(nextGenreIds),
               HideFromSummary: form.hideFromSummary ? 'TRUE' : 'FALSE'
             };
 
@@ -1786,6 +2096,8 @@
                 movieTitle: form.movieTitle,
                 rating: payload.Rating,
                 posterUrl: nextPosterUrl,
+                tmdbId: nextTmdbId,
+                genreIds: nextGenreIds,
                 commentKo: form.comment,
                 commentJp: form.comment,
                 hideFromSummary: !!form.hideFromSummary
@@ -3065,6 +3377,9 @@
         setUserViewMode('default');
         setRatingSortOrder('desc');
         setExpandedReviews({});
+        setGenreStats(null);
+        setGenreStatsError('');
+        setIsGenreStatsLoading(false);
       };
 
       const renderUserCalendar = (userReviews) => {
@@ -3285,6 +3600,172 @@
         );
       };
 
+      const renderGenreTaste = (userReviews) => {
+        if (isGenreStatsLoading) {
+          return (
+            <div className="genre-taste-shell rounded-2xl border border-slate-800 bg-slate-900 px-5 py-16 text-center shadow-xl">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-500/10 text-teal-400">
+                <Loader2 className="h-7 w-7 animate-spin" />
+              </div>
+              <p className="mt-4 text-sm text-slate-300">{t.genreStatsLoading}</p>
+              <div className="genre-film-perforation mx-auto mt-5 h-3 w-40 rounded-full opacity-50"></div>
+            </div>
+          );
+        }
+
+        if (genreStatsError) {
+          return (
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-10 text-center">
+              <p className="text-sm text-amber-300">{t.genreStatsError}</p>
+              <button
+                type="button"
+                onClick={() => loadGenreStats(selectedUser)}
+                className="mt-4 rounded-lg border border-amber-400/40 bg-slate-900/70 px-4 py-2 text-xs font-semibold text-amber-200 transition-colors hover:border-amber-300"
+              >
+                {t.genreStatsRetry}
+              </button>
+            </div>
+          );
+        }
+
+        const genres = genreStats?.genres || [];
+        if (!genreStats || genres.length === 0) {
+          return (
+            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 px-5 py-14 text-center">
+              <Film className="mx-auto h-8 w-8 text-slate-600" />
+              <p className="mt-3 text-sm text-slate-400">{t.genreStatsEmpty}</p>
+              <button
+                type="button"
+                onClick={() => loadGenreStats(selectedUser)}
+                className="mt-4 rounded-lg bg-teal-500 px-4 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-teal-400"
+              >
+                {t.genreStatsRetry}
+              </button>
+            </div>
+          );
+        }
+
+        const topGenre = genres[0];
+        const persona = buildGenrePersona(genres, selectedUser, currentUser, appLang);
+        const chartGenres = genres.slice(0, 6);
+        const totalGenreWeight = genres.reduce((sum, genre) => sum + Number(genre.weight || 0), 0) || 1;
+        const chartUsed = chartGenres.reduce(
+          (sum, genre) => sum + (Number(genre.weight || 0) / totalGenreWeight) * 100,
+          0
+        );
+        const remaining = Math.max(0, 100 - chartUsed);
+        let cursor = 0;
+        const gradientParts = chartGenres.map((genre, index) => {
+          const start = cursor;
+          cursor += (Number(genre.weight || 0) / totalGenreWeight) * 100;
+          return `${GENRE_CHART_COLORS[index % GENRE_CHART_COLORS.length]} ${start.toFixed(2)}% ${cursor.toFixed(2)}%`;
+        });
+        if (remaining > 0.05) {
+          gradientParts.push(`${GENRE_CHART_COLORS[7]} ${cursor.toFixed(2)}% 100%`);
+        }
+        const donutBackground = `conic-gradient(${gradientParts.join(', ')})`;
+        const averageRating = Number(genreStats.averageRating || 0);
+
+        return (
+          <div className="space-y-5 animate-in fade-in slide-in-from-bottom-3 duration-500">
+            <section className="genre-taste-shell rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-7 shadow-xl">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-bold tracking-[0.28em] text-teal-400">{t.genreStatsEyebrow}</p>
+                  <h3 className="mt-2 text-xl font-black text-white sm:text-2xl">{t.genreStatsTitle}</h3>
+                  <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-400 sm:text-sm">{t.genreStatsIntro}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadGenreStats(selectedUser)}
+                  className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-[11px] text-slate-400 transition-colors hover:border-teal-400 hover:text-teal-400"
+                >
+                  {t.genreStatsRetry}
+                </button>
+              </div>
+
+              <div className="mt-7 grid gap-7 md:grid-cols-[220px_minmax(0,1fr)] md:items-center">
+                <div className="mx-auto w-full max-w-[210px]">
+                  <div className="genre-donut mx-auto aspect-square w-full" style={{ background: donutBackground }}>
+                    <div className="genre-donut-label px-8">
+                      <span className="text-3xl font-black text-white sm:text-4xl">{Math.round(Number(topGenre.percentage || 0))}%</span>
+                      <span className="mt-1 max-w-[110px] truncate text-[10px] font-bold tracking-[0.12em] text-teal-400 sm:text-xs">{topGenre.name}</span>
+                    </div>
+                  </div>
+                  <div className="genre-film-perforation mx-auto mt-5 h-3 w-36 rounded-full opacity-50"></div>
+                </div>
+
+                <div className="min-w-0">
+                  <div className="rounded-2xl border border-teal-500/30 bg-teal-500/5 p-5 sm:p-6">
+                    <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.18em] text-teal-400">
+                      <Film className="h-4 w-4" /> TASTE TYPE
+                    </div>
+                    <h4 className="mt-3 break-words text-xl font-black leading-snug text-white sm:text-2xl">{persona.title}</h4>
+                    <p className="mt-3 text-sm leading-relaxed text-slate-300">{persona.description}</p>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/45 px-3 py-3 text-center">
+                      <p className="text-lg font-black text-white">{genreStats.analyzedCount || 0}</p>
+                      <p className="mt-0.5 text-[9px] leading-tight text-slate-500 sm:text-[10px]">{t.genreStatsAnalyzed}</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/45 px-3 py-3 text-center">
+                      <p className="text-lg font-black text-white">{genres.length}</p>
+                      <p className="mt-0.5 text-[9px] leading-tight text-slate-500 sm:text-[10px]">{t.genreStatsGenres}</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/45 px-3 py-3 text-center">
+                      <p className="text-lg font-black text-yellow-400">{averageRating ? averageRating.toFixed(1) : '-'}</p>
+                      <p className="mt-0.5 text-[9px] leading-tight text-slate-500 sm:text-[10px]">{t.genreStatsAverage}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6 shadow-lg">
+              <div className="space-y-4">
+                {genres.slice(0, 10).map((genre, index) => (
+                  <div key={genre.id} className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3">
+                    <span className="text-center font-mono text-[10px] text-slate-600">{String(index + 1).padStart(2, '0')}</span>
+                    <div className="min-w-0">
+                      <div className="mb-1.5 flex min-w-0 items-center justify-between gap-3">
+                        <span className="truncate text-xs font-semibold text-slate-200 sm:text-sm">{genre.name}</span>
+                        <span className="shrink-0 text-[9px] text-slate-500 sm:text-[10px]">{genre.movieCount}{t.genreStatsIncluded}</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${Math.max(2, Number(genre.percentage || 0))}%`,
+                            backgroundColor: GENRE_CHART_COLORS[index % GENRE_CHART_COLORS.length]
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                    <span className="min-w-[44px] text-right text-sm font-black text-white">{Math.round(Number(genre.percentage || 0))}%</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 border-t border-slate-800 pt-4">
+                <p className="text-[10px] leading-relaxed text-slate-500">ⓘ {t.genreStatsMethod}</p>
+                {Number(genreStats.unresolvedCount || 0) > 0 && (
+                  <p className="mt-1.5 text-[10px] leading-relaxed text-amber-400/80">
+                    {t.genreStatsUnresolved}: {genreStats.unresolvedCount}{t.genreStatsUnit}
+                  </p>
+                )}
+                <p className="mt-2 text-[9px] text-slate-600">{t.tmdbAttribution}</p>
+              </div>
+            </section>
+          </div>
+        );
+      };
+
+      useEffect(() => {
+        if (!selectedUser || userViewMode !== 'genre') return;
+        loadGenreStats(selectedUser);
+      }, [selectedUser, userViewMode, appLang]);
+
       const renderUser = () => {
         if (selectedUser) {
           const userReviews = appData.reviews.filter(r => r.nickname === selectedUser);
@@ -3319,6 +3800,7 @@
                     <button onClick={() => { setUserViewMode('default'); setExpandedReviews({}); }} className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm rounded-md transition-colors whitespace-nowrap ${userViewMode === 'default' ? 'bg-teal-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}>{t.viewDefault}</button>
                     <button onClick={() => { setUserViewMode('compact'); setExpandedReviews({}); }} className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm rounded-md transition-colors whitespace-nowrap ${userViewMode === 'compact' ? 'bg-teal-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}>{t.viewCompact}</button>
                     <button onClick={() => { setUserViewMode('calendar'); setExpandedReviews({}); }} className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm rounded-md transition-colors whitespace-nowrap ${userViewMode === 'calendar' ? 'bg-teal-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}>{t.viewCalendar}</button>
+                    <button onClick={() => { setUserViewMode('genre'); setExpandedReviews({}); }} className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm rounded-md transition-colors whitespace-nowrap ${userViewMode === 'genre' ? 'bg-teal-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}>{t.viewGenre}</button>
                   </div>
                   
                   {userViewMode === 'compact' && (
@@ -3334,6 +3816,8 @@
 
               {userReviews.length === 0 ? (
                 <p className="text-slate-500 text-center py-10">{t.noData}</p>
+              ) : userViewMode === 'genre' ? (
+                renderGenreTaste(userReviews)
               ) : userViewMode === 'default' ? (
                 <div className="grid gap-6">
                   {dateSortedReviews.map(r => (
