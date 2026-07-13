@@ -424,6 +424,17 @@
       color: #95671d !important;
     }
 
+    /* 감상시간·키워드 분석 카드의 밝은 테마 대비 */
+    body.light-theme .text-indigo-300 { color: #665aa0 !important; }
+    body.light-theme .text-amber-300 { color: #95671d !important; }
+    body.light-theme .text-teal-300 { color: #24796f !important; }
+    body.light-theme .bg-indigo-400\/5 { background-color: rgba(102, 90, 160, 0.08) !important; }
+    body.light-theme .border-indigo-400\/25 { border-color: rgba(102, 90, 160, 0.32) !important; }
+    body.light-theme .bg-amber-400\/5 { background-color: rgba(149, 103, 29, 0.08) !important; }
+    body.light-theme .border-amber-400\/25 { border-color: rgba(149, 103, 29, 0.30) !important; }
+    body.light-theme .bg-teal-400\/5 { background-color: rgba(36, 121, 111, 0.08) !important; }
+    body.light-theme .border-teal-400\/25 { border-color: rgba(36, 121, 111, 0.30) !important; }
+
 
     /* 모든 화면에서 도넛을 상단 중앙에 배치합니다. */
 
@@ -563,8 +574,8 @@
         genreStatsEyebrow: "YOUR CINEMA DNA",
         genreStatsTitle: "장르 취향 분석",
         genreStatsIntro: "지금까지 남긴 감상 기록을 TMDB 장르 정보로 분석했습니다.",
-        genreStatsLoading: "필름을 돌려보며 장르 취향을 분석하고 있습니다...",
-        genreStatsError: "장르 통계를 불러오지 못했습니다.",
+        genreStatsLoading: "필름을 돌려보며 감상시간과 취향을 분석하고 있습니다...",
+        genreStatsError: "TMDB 취향 통계를 불러오지 못했습니다.",
         genreStatsRetry: "다시 분석",
         genreStatsAnalyzed: "분석 완료",
         genreStatsGenres: "발견한 장르",
@@ -579,6 +590,30 @@
         genreStatsTasteInsight: "취향 해석",
         genreStatsDiscovery: "작은 발견",
         genreStatsViewingStyle: "감상 스타일",
+        runtimeStatsEyebrow: "YOUR WATCH TIME",
+        runtimeStatsTitle: "누적 영화 감상시간",
+        runtimeStatsIntro: "TMDB 러닝타임을 기준으로 지금까지 영화와 함께 보낸 시간을 계산했습니다.",
+        runtimeStatsTotal: "총 감상시간",
+        runtimeStatsEquivalent: "일수로 환산",
+        runtimeStatsAverage: "평균 러닝타임",
+        runtimeStatsLongest: "가장 긴 영화",
+        runtimeStatsAnalyzed: "시간 분석 완료",
+        runtimeStatsUnresolved: "러닝타임을 찾지 못한 기록",
+        runtimeStatsMethod: "같은 영화를 여러 번 기록했다면 각 관람을 모두 누적합니다. TMDB에 러닝타임이 없는 작품은 합계에서 제외됩니다.",
+        runtimeStatsHour: "시간",
+        runtimeStatsMinute: "분",
+        runtimeStatsDay: "일",
+        keywordStatsEyebrow: "STORY KEYWORDS",
+        keywordStatsTitle: "영화 키워드 취향 분석",
+        keywordStatsIntro: "장르보다 작은 이야기 요소를 모아 반복해서 선택한 소재와 정서를 살펴봅니다.",
+        keywordStatsEmpty: "분석할 수 있는 영화 키워드가 아직 없습니다.",
+        keywordStatsMostSeen: "가장 자주 만난 키워드",
+        keywordStatsBestRated: "가장 높은 별점을 준 키워드",
+        keywordStatsAverage: "평균 별점",
+        keywordStatsIncluded: "편",
+        keywordStatsAnalyzed: "키워드 분석 완료",
+        keywordStatsUnresolved: "키워드를 찾지 못한 기록",
+        keywordStatsMethod: "한 영화 안에서는 같은 키워드를 한 번만 계산합니다. 키워드 명칭은 TMDB에 등록된 원문을 사용합니다.",
         sortDesc: "별점 높은 순",
         sortAsc: "별점 낮은 순",
         previousMonth: "이전 달",
@@ -726,8 +761,8 @@
         genreStatsEyebrow: "YOUR CINEMA DNA",
         genreStatsTitle: "ジャンル傾向分析",
         genreStatsIntro: "これまでの鑑賞記録をTMDBのジャンル情報で分析しました。",
-        genreStatsLoading: "フィルムを回しながらジャンル傾向を分析しています...",
-        genreStatsError: "ジャンル統計を読み込めませんでした。",
+        genreStatsLoading: "フィルムを回しながら鑑賞時間と好みを分析しています...",
+        genreStatsError: "TMDBの好み統計を読み込めませんでした。",
         genreStatsRetry: "もう一度分析",
         genreStatsAnalyzed: "分析済み",
         genreStatsGenres: "見つかったジャンル",
@@ -742,6 +777,30 @@
         genreStatsTasteInsight: "好みの解釈",
         genreStatsDiscovery: "小さな発見",
         genreStatsViewingStyle: "鑑賞スタイル",
+        runtimeStatsEyebrow: "YOUR WATCH TIME",
+        runtimeStatsTitle: "累積映画鑑賞時間",
+        runtimeStatsIntro: "TMDBの上映時間をもとに、これまで映画と過ごした時間を集計しました。",
+        runtimeStatsTotal: "総鑑賞時間",
+        runtimeStatsEquivalent: "日数に換算",
+        runtimeStatsAverage: "平均上映時間",
+        runtimeStatsLongest: "最も長い映画",
+        runtimeStatsAnalyzed: "時間分析済み",
+        runtimeStatsUnresolved: "上映時間が見つからない記録",
+        runtimeStatsMethod: "同じ映画を複数回記録した場合は、鑑賞ごとにすべて加算します。TMDBに上映時間がない作品は合計から除外されます。",
+        runtimeStatsHour: "時間",
+        runtimeStatsMinute: "分",
+        runtimeStatsDay: "日",
+        keywordStatsEyebrow: "STORY KEYWORDS",
+        keywordStatsTitle: "映画キーワード傾向分析",
+        keywordStatsIntro: "ジャンルより細かな物語の要素を集め、繰り返し選んだ題材や感情を見つめます。",
+        keywordStatsEmpty: "分析できる映画キーワードはまだありません。",
+        keywordStatsMostSeen: "最もよく出会ったキーワード",
+        keywordStatsBestRated: "最も高く評価したキーワード",
+        keywordStatsAverage: "平均評価",
+        keywordStatsIncluded: "本",
+        keywordStatsAnalyzed: "キーワード分析済み",
+        keywordStatsUnresolved: "キーワードが見つからない記録",
+        keywordStatsMethod: "一つの映画の中では同じキーワードを一度だけ数えます。キーワード名はTMDBに登録された原文を使用します。",
         sortDesc: "評価が高い順",
         sortAsc: "評価が低い順",
         previousMonth: "前の月",
@@ -932,6 +991,31 @@
 
     // 쉼표 문자열은 시트에서 숫자로 오인될 수 있으므로 JSON 배열 문자열로 저장합니다.
     const serializeGenreIds = (value) => JSON.stringify(parseGenreIds(value));
+
+    const parseNumericIds = (value) => {
+      let values = [];
+      if (Array.isArray(value)) {
+        values = value;
+      } else {
+        const raw = String(value ?? '').trim();
+        if (!raw) return [];
+        try {
+          const parsed = JSON.parse(raw);
+          values = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (error) {
+          values = raw.split(/[,|;\s]+/);
+        }
+      }
+
+      return Array.from(new Set(
+        values
+          .map(item => Number(item))
+          .filter(item => Number.isFinite(item) && item > 0)
+          .map(item => Math.round(item))
+      ));
+    };
+
+    const serializeNumericIds = (value) => JSON.stringify(parseNumericIds(value));
 
     const GENRE_CHART_COLORS = [
       '#2dd4bf', '#818cf8', '#f59e0b', '#f472b6',
@@ -1689,7 +1773,9 @@
                   ? {
                       ...review,
                       tmdbId: String(metadata.tmdbId || ''),
-                      genreIds: parseGenreIds(metadata.genreIds)
+                      genreIds: parseGenreIds(metadata.genreIds),
+                      runtime: Number(metadata.runtime || 0),
+                      keywordIds: parseNumericIds(metadata.keywordIds)
                     }
                   : review;
               })
@@ -1948,7 +2034,7 @@
             throw error;
           }
 
-          // 영화 검색 API가 기본적으로 제공하는 제목, 공개일, 줄거리, 포스터만 사용합니다.
+          // TMDB ID가 없는 과거 기록이나 모달 안의 수동 재검색에만 제목 검색을 사용합니다.
           const results = (data.results || []).slice(0, 10);
           const targetReview = targetOverride || movieInfoTarget;
           const savedPosterUrl = getPosterUrl(targetReview);
@@ -1970,20 +2056,78 @@
         }
       };
 
+      // 리뷰에 저장된 TMDB 고유 ID로 영화 한 편을 직접 조회합니다.
+      // ID 조회에 실패한 경우에만 기존 제목 검색을 예비 방식으로 사용합니다.
+      const loadMovieInfoByTmdbId = async (tmdbId, targetReview, fallbackQuery) => {
+        const normalizedTmdbId = String(tmdbId || '').trim();
+        if (!normalizedTmdbId) {
+          searchMovieInfo(fallbackQuery, targetReview);
+          return;
+        }
+
+        setIsMovieInfoSearching(true);
+        setMovieInfoError('');
+        setMovieInfoResults([]);
+        setSelectedMovieInfo(null);
+        setExpandedMovieReviewIds({});
+
+        try {
+          const language = appLang === 'ko' ? 'ko-KR' : 'ja-JP';
+          const requestUrl =
+            SCRIPT_URL +
+            '?action=tmdbMovieDetails' +
+            '&id=' + encodeURIComponent(normalizedTmdbId) +
+            '&language=' + encodeURIComponent(language) +
+            '&t=' + Date.now();
+
+          const response = await fetch(requestUrl, {
+            method: 'GET',
+            cache: 'no-store'
+          });
+
+          if (!response.ok) {
+            throw new Error(`TMDB_PROXY_HTTP_${response.status}`);
+          }
+
+          const data = await response.json();
+          if (data.success === false || !data.movie) {
+            const error = new Error(data.message || t.movieInfoSearchError);
+            error.code = data.code || '';
+            throw error;
+          }
+
+          setSelectedMovieInfo(data.movie);
+          setMovieInfoResults([data.movie]);
+        } catch (error) {
+          console.warn('TMDB movie detail by ID failed. Falling back to title search:', error);
+          await searchMovieInfo(fallbackQuery, targetReview);
+        } finally {
+          setIsMovieInfoSearching(false);
+        }
+      };
+
       const openMovieInfo = (review) => {
         const initialQuery = getMovieInfoInitialQuery(review?.movieTitle);
+        const savedTmdbId = String(review?.tmdbId || '').trim();
+
         setMovieInfoTarget(review);
         setMovieInfoQuery(initialQuery);
         setMovieInfoResults([]);
         setSelectedMovieInfo(null);
         setMovieInfoError('');
         setExpandedMovieReviewIds({});
-        searchMovieInfo(initialQuery, review);
+
+        if (savedTmdbId) {
+          loadMovieInfoByTmdbId(savedTmdbId, review, initialQuery);
+        } else {
+          searchMovieInfo(initialQuery, review);
+        }
       };
 
       const getMatchingMovieReviews = (movie) => {
         if (!movie) return [];
 
+        const selectedTmdbId = String(movie.id || '').trim();
         const selectedAliases = new Set([
           ...getMovieTitleAliases(movie.title),
           ...getMovieTitleAliases(movie.original_title)
@@ -1992,7 +2136,12 @@
 
         return appData.reviews
           .filter(review => {
-            if (movieInfoTarget && review.id === movieInfoTarget.id) return true;
+            const reviewTmdbId = String(review.tmdbId || '').trim();
+
+            // 양쪽 모두 TMDB ID가 있으면 제목이나 포스터보다 ID 일치를 우선합니다.
+            if (selectedTmdbId && reviewTmdbId) {
+              return selectedTmdbId === reviewTmdbId;
+            }
 
             const reviewPosterUrl = getPosterUrl(review);
             if (selectedPosterUrl && reviewPosterUrl && selectedPosterUrl === reviewPosterUrl) return true;
@@ -2380,6 +2529,8 @@
             posterUrl: item.PosterUrl || item.posterUrl || '',
             tmdbId: String(getNormalizedField(item, 'TmdbId', 'TMDBID', 'tmdbId') || ''),
             genreIds: parseGenreIds(getNormalizedField(item, 'GenreIds', 'genreIds')),
+            runtime: Number(getNormalizedField(item, 'Runtime', 'runtime') || 0),
+            keywordIds: parseNumericIds(getNormalizedField(item, 'KeywordIds', 'keywordIds')),
             hideFromSummary: parseBoolean(getNormalizedField(item, 'HideFromSummary', 'hideFromSummary')),
             titleKo: item.TitleKo || item.titleKo,
             titleJp: item.TitleJp || item.titleJp,
@@ -2552,6 +2703,8 @@
             Comment: reviewComment, posterUrl: selectedPosterUrl, PosterUrl: selectedPosterUrl,
             tmdbId: selectedTmdbId, TmdbId: selectedTmdbId,
             genreIds: selectedGenreIds, GenreIds: serializeGenreIds(selectedGenreIds),
+            runtime: 0, Runtime: '',
+            keywordIds: [], KeywordIds: '[]',
             hideFromSummary: !!formData.hideFromSummary,
             HideFromSummary: formData.hideFromSummary ? 'TRUE' : 'FALSE',
             createdAt: new Date().toISOString()
@@ -2660,6 +2813,9 @@
             const nextGenreIds = form.selectedTmdbMovie
               ? parseGenreIds(form.selectedTmdbMovie.genre_ids)
               : (titleChanged ? [] : parseGenreIds(targetItem.genreIds));
+            const metadataNeedsRefresh = !!form.selectedTmdbMovie || titleChanged;
+            const nextRuntime = metadataNeedsRefresh ? 0 : Number(targetItem.runtime || 0);
+            const nextKeywordIds = metadataNeedsRefresh ? [] : parseNumericIds(targetItem.keywordIds);
             const payload = {
               Nickname: currentUser,
               Date: form.date,
@@ -2670,6 +2826,8 @@
               PosterUrl: nextPosterUrl,
               TmdbId: nextTmdbId,
               GenreIds: serializeGenreIds(nextGenreIds),
+              Runtime: nextRuntime || '',
+              KeywordIds: serializeNumericIds(nextKeywordIds),
               HideFromSummary: form.hideFromSummary ? 'TRUE' : 'FALSE'
             };
 
@@ -2686,6 +2844,8 @@
                 posterUrl: nextPosterUrl,
                 tmdbId: nextTmdbId,
                 genreIds: nextGenreIds,
+                runtime: nextRuntime,
+                keywordIds: nextKeywordIds,
                 commentKo: form.comment,
                 commentJp: form.comment,
                 hideFromSummary: !!form.hideFromSummary
@@ -4188,6 +4348,26 @@
         );
       };
 
+      const formatRuntimeTotal = (minutes) => {
+        const total = Math.max(0, Math.round(Number(minutes || 0)));
+        const hours = Math.floor(total / 60);
+        const remainMinutes = total % 60;
+        if (hours <= 0) return `${remainMinutes}${t.runtimeStatsMinute}`;
+        return `${hours}${t.runtimeStatsHour} ${remainMinutes}${t.runtimeStatsMinute}`;
+      };
+
+      const formatRuntimeEquivalent = (minutes) => {
+        const total = Math.max(0, Math.round(Number(minutes || 0)));
+        const days = Math.floor(total / 1440);
+        const hours = Math.floor((total % 1440) / 60);
+        const remainMinutes = total % 60;
+        const parts = [];
+        if (days > 0) parts.push(`${days}${t.runtimeStatsDay}`);
+        if (hours > 0) parts.push(`${hours}${t.runtimeStatsHour}`);
+        if (remainMinutes > 0 || parts.length === 0) parts.push(`${remainMinutes}${t.runtimeStatsMinute}`);
+        return parts.join(' ');
+      };
+
       const renderGenreTaste = (userReviews) => {
         if (isGenreStatsLoading) {
           return (
@@ -4255,6 +4435,12 @@
         });
         const donutBackground = `conic-gradient(${gradientParts.join(', ')})`;
         const averageRating = Number(genreStats.averageRating || 0);
+        const runtimeStats = genreStats.runtimeStats || {};
+        const keywordStats = genreStats.keywordStats || {};
+        const keywords = Array.isArray(keywordStats.keywords) ? keywordStats.keywords : [];
+        const mostFrequentKeyword = keywordStats.mostFrequentKeyword || keywords[0] || null;
+        const bestRatedKeyword = keywordStats.bestRatedKeyword || null;
+        const maxKeywordCount = keywords.reduce((max, keyword) => Math.max(max, Number(keyword.movieCount || 0)), 1);
 
         // 표시용 정수 퍼센트는 전체 장르를 대상으로 최대 나머지 방식으로 보정합니다.
         // 따라서 화면에 표시되는 모든 행의 합계는 정확히 100%가 됩니다.
@@ -4282,6 +4468,62 @@
 
         return (
           <div className="space-y-5 animate-in fade-in slide-in-from-bottom-3 duration-500">
+            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-7 shadow-xl">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-bold tracking-[0.28em] text-indigo-300">{t.runtimeStatsEyebrow}</p>
+                  <h3 className="mt-2 text-xl font-black text-white sm:text-2xl">{t.runtimeStatsTitle}</h3>
+                  <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-400 sm:text-sm">{t.runtimeStatsIntro}</p>
+                </div>
+                <Calendar className="h-7 w-7 text-indigo-300" />
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl border border-indigo-400/25 bg-indigo-400/5 p-5 sm:col-span-2">
+                  <p className="text-[10px] font-bold tracking-[0.16em] text-indigo-300">{t.runtimeStatsTotal}</p>
+                  <p className="mt-3 break-words text-3xl font-black text-white sm:text-4xl">
+                    {formatRuntimeTotal(runtimeStats.totalMinutes || 0)}
+                  </p>
+                  <p className="mt-2 text-xs text-slate-400">
+                    {t.runtimeStatsEquivalent} · {formatRuntimeEquivalent(runtimeStats.totalMinutes || 0)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/45 p-4">
+                  <p className="text-[10px] font-bold tracking-[0.12em] text-slate-500">{t.runtimeStatsAverage}</p>
+                  <p className="mt-3 text-2xl font-black text-white">
+                    {Number(runtimeStats.averageMinutes || 0) > 0
+                      ? `${Math.round(Number(runtimeStats.averageMinutes))}${t.runtimeStatsMinute}`
+                      : '-'}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {runtimeStats.analyzedCount || 0}{t.genreStatsUnit} · {t.runtimeStatsAnalyzed}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/45 p-4">
+                  <p className="text-[10px] font-bold tracking-[0.12em] text-slate-500">{t.runtimeStatsLongest}</p>
+                  {runtimeStats.longestMovie ? (
+                    <>
+                      <p className="mt-3 line-clamp-2 text-sm font-bold leading-snug text-white">{runtimeStats.longestMovie.title}</p>
+                      <p className="mt-2 text-lg font-black text-indigo-300">{runtimeStats.longestMovie.runtime}{t.runtimeStatsMinute}</p>
+                    </>
+                  ) : (
+                    <p className="mt-3 text-2xl font-black text-slate-600">-</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-5 border-t border-slate-800 pt-4">
+                <p className="text-[10px] leading-relaxed text-slate-500">ⓘ {t.runtimeStatsMethod}</p>
+                {Number(runtimeStats.unresolvedCount || 0) > 0 && (
+                  <p className="mt-1.5 text-[10px] text-amber-400/80">
+                    {t.runtimeStatsUnresolved}: {runtimeStats.unresolvedCount}{t.genreStatsUnit}
+                  </p>
+                )}
+              </div>
+            </section>
+
             <section className="genre-taste-shell rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-7 shadow-xl">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -4420,6 +4662,87 @@
                   </p>
                 )}
                 <p className="mt-2 text-[9px] text-slate-600">{t.tmdbAttribution}</p>
+              </div>
+            </section>
+
+
+
+            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-7 shadow-xl">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-bold tracking-[0.28em] text-amber-300">{t.keywordStatsEyebrow}</p>
+                  <h3 className="mt-2 text-xl font-black text-white sm:text-2xl">{t.keywordStatsTitle}</h3>
+                  <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-400 sm:text-sm">{t.keywordStatsIntro}</p>
+                </div>
+                <Lightbulb className="h-7 w-7 text-amber-300" />
+              </div>
+
+              {keywords.length === 0 ? (
+                <div className="mt-6 rounded-xl border border-dashed border-slate-700 bg-slate-950/30 px-4 py-10 text-center text-sm text-slate-500">
+                  {t.keywordStatsEmpty}
+                </div>
+              ) : (
+                <>
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-5">
+                      <p className="text-[10px] font-bold tracking-[0.14em] text-amber-300">{t.keywordStatsMostSeen}</p>
+                      <p className="mt-3 break-words text-2xl font-black text-white">{mostFrequentKeyword?.name || '-'}</p>
+                      <p className="mt-2 text-xs text-slate-400">
+                        {mostFrequentKeyword?.movieCount || 0}{t.keywordStatsIncluded} · {Math.round(Number(mostFrequentKeyword?.percentage || 0))}%
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-teal-400/25 bg-teal-400/5 p-5">
+                      <p className="text-[10px] font-bold tracking-[0.14em] text-teal-300">{t.keywordStatsBestRated}</p>
+                      <p className="mt-3 break-words text-2xl font-black text-white">{bestRatedKeyword?.name || '-'}</p>
+                      <p className="mt-2 text-xs text-slate-400">
+                        {bestRatedKeyword
+                          ? `${t.keywordStatsAverage} ${Number(bestRatedKeyword.averageRating || 0).toFixed(1)} · ${bestRatedKeyword.movieCount}${t.keywordStatsIncluded}`
+                          : '-'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 space-y-3">
+                    {keywords.slice(0, 12).map((keyword, index) => (
+                      <div key={keyword.id} className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3">
+                        <span className="text-center font-mono text-[10px] text-slate-600">{String(index + 1).padStart(2, '0')}</span>
+                        <div className="min-w-0">
+                          <div className="mb-1.5 flex min-w-0 items-center justify-between gap-3">
+                            <span className="truncate text-xs font-semibold text-slate-200 sm:text-sm">{keyword.name}</span>
+                            <span className="shrink-0 text-[9px] text-slate-500 sm:text-[10px]">
+                              {keyword.movieCount}{t.keywordStatsIncluded}
+                              {Number(keyword.averageRating || 0) > 0 ? ` · ★ ${Number(keyword.averageRating).toFixed(1)}` : ''}
+                            </span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+                            <div
+                              className="h-full rounded-full transition-all duration-700"
+                              style={{
+                                width: `${Math.max(2, (Number(keyword.movieCount || 0) / maxKeywordCount) * 100)}%`,
+                                backgroundColor: GENRE_CHART_COLORS[(index + 2) % GENRE_CHART_COLORS.length]
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                        <span className="min-w-[44px] text-right text-sm font-black text-white">
+                          {Math.round(Number(keyword.percentage || 0))}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <div className="mt-6 border-t border-slate-800 pt-4">
+                <p className="text-[10px] leading-relaxed text-slate-500">ⓘ {t.keywordStatsMethod}</p>
+                <p className="mt-1.5 text-[10px] text-slate-500">
+                  {keywordStats.analyzedCount || 0}{t.genreStatsUnit} · {t.keywordStatsAnalyzed}
+                </p>
+                {Number(keywordStats.unresolvedCount || 0) > 0 && (
+                  <p className="mt-1.5 text-[10px] text-amber-400/80">
+                    {t.keywordStatsUnresolved}: {keywordStats.unresolvedCount}{t.genreStatsUnit}
+                  </p>
+                )}
               </div>
             </section>
           </div>
