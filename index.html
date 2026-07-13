@@ -5365,10 +5365,9 @@
                   <div className="pointer-events-none absolute left-1/2 top-0 h-32 w-32 -translate-x-1/2 rounded-full bg-teal-400/15 blur-3xl"></div>
 
                   <div className="relative mx-auto w-[172px]">
-                    <div className="absolute -inset-2 rounded-[22px] border border-dashed border-slate-600/70"></div>
                     <div
                       key={`random-poster-${randomDrawStep}`}
-                      className={`relative aspect-[2/3] overflow-hidden rounded-2xl border border-slate-600 bg-slate-800 shadow-2xl ${randomPreviewMovie ? 'random-picker-poster-swap' : ''}`}
+                      className={`relative aspect-[2/3] overflow-hidden rounded-2xl border border-dashed border-slate-500/80 bg-slate-800 shadow-2xl ${randomPreviewMovie ? 'random-picker-poster-swap' : ''}`}
                     >
                       {randomPreviewMovie && (randomPreviewMovie.posterUrl || getPosterUrl(randomPreviewMovie.representative)) ? (
                         <img
