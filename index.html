@@ -439,6 +439,74 @@
     /* 모든 화면에서 도넛을 상단 중앙에 배치합니다. */
 
 
+
+
+    /* ---------------------------------------------------------------------- */
+    /* Random Movie Picker                                                     */
+    /* ---------------------------------------------------------------------- */
+    @keyframes random-picker-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    @keyframes random-picker-glow {
+      0%, 100% { box-shadow: 0 14px 34px rgba(20, 184, 166, 0.24); }
+      50% { box-shadow: 0 18px 44px rgba(20, 184, 166, 0.40); }
+    }
+
+    @keyframes random-poster-swap {
+      0% {
+        opacity: 0.45;
+        transform: scale(0.92) rotate(-1.5deg);
+        filter: blur(2px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+        filter: blur(0);
+      }
+    }
+
+    @keyframes random-reel-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes random-result-pop {
+      0% { opacity: 0; transform: scale(0.94) translateY(8px); }
+      70% { transform: scale(1.02) translateY(-2px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .random-picker-fab {
+      animation: random-picker-float 2.8s ease-in-out infinite,
+                 random-picker-glow 2.8s ease-in-out infinite;
+    }
+
+    .random-picker-poster-swap {
+      animation: random-poster-swap 0.18s ease-out both;
+    }
+
+    .random-picker-reel-spin {
+      animation: random-reel-spin 0.8s linear infinite;
+    }
+
+    .random-picker-result-pop {
+      animation: random-result-pop 0.36s ease-out both;
+    }
+
+    body.light-theme .random-picker-fab {
+      box-shadow: 0 14px 32px rgba(89, 103, 170, 0.28);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .random-picker-fab,
+      .random-picker-poster-swap,
+      .random-picker-reel-spin,
+      .random-picker-result-pop {
+        animation: none !important;
+      }
+    }
+
   </style>
 </head>
 <body class="bg-slate-950 text-slate-200 font-sans selection:bg-teal-500 selection:text-white pb-20">
@@ -451,7 +519,7 @@
     /* @jsx React.createElement */
     /* @jsxFrag React.Fragment */
     
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useRef } = React;
 
     // --- 아이콘 세팅 (Lucide 아이콘을 HTML 안에 직접 내장) ---
     const Icons = {
@@ -1724,6 +1792,14 @@
       const [isMovieInfoSearching, setIsMovieInfoSearching] = useState(false);
       const [movieInfoError, setMovieInfoError] = useState('');
       const [expandedMovieReviewIds, setExpandedMovieReviewIds] = useState({});
+
+      // 화면 우하단의 랜덤 영화 추첨 모달
+      const [randomPickerOpen, setRandomPickerOpen] = useState(false);
+      const [isRandomPicking, setIsRandomPicking] = useState(false);
+      const [randomPreviewMovie, setRandomPreviewMovie] = useState(null);
+      const [randomPickedMovie, setRandomPickedMovie] = useState(null);
+      const [randomDrawStep, setRandomDrawStep] = useState(0);
+      const randomDrawTokenRef = useRef(0);
       
       const todayStr = formatKSTDate(new Date().toISOString());
       const currentWeekNum = calculateWeek(todayStr);
@@ -1731,6 +1807,31 @@
       const [selectedWeek, setSelectedWeek] = useState(currentWeekNum);
 
       const t = UI_STRINGS[appLang];
+      const randomMovieCopy = appLang === 'ko'
+        ? {
+            button: '랜덤 영화',
+            title: '오늘의 영화 뽑기',
+            guide: '모두가 기록한 영화 중 한 편을 골라드려요.',
+            drawing: '필름을 돌리는 중...',
+            selected: '오늘의 추천 영화',
+            openInfo: '영화 정보 보기',
+            drawAgain: '다시 뽑기',
+            close: '닫기',
+            viewers: '명 감상',
+            reviews: '개 기록'
+          }
+        : {
+            button: 'ランダム映画',
+            title: '今日の映画を選ぶ',
+            guide: 'みんなが記録した映画から一本を選びます。',
+            drawing: 'フィルムを回しています...',
+            selected: '今日のおすすめ映画',
+            openInfo: '映画情報を見る',
+            drawAgain: 'もう一度選ぶ',
+            close: '閉じる',
+            viewers: '人が鑑賞',
+            reviews: '件の記録'
+          };
 
       const loadGenreStats = async (nickname) => {
         if (!nickname || isGenreStatsLoading) return;
@@ -2247,6 +2348,83 @@
           );
         });
       };
+
+      const closeRandomMoviePicker = () => {
+        randomDrawTokenRef.current += 1;
+        setRandomPickerOpen(false);
+        setIsRandomPicking(false);
+        setRandomPreviewMovie(null);
+        setRandomPickedMovie(null);
+        setRandomDrawStep(0);
+      };
+
+      const drawRandomMovie = async () => {
+        const moviePool = getAlbumMovieGroups().filter(group => group?.representative);
+        if (moviePool.length === 0 || isRandomPicking) return;
+
+        const previousPickedId = randomPickedMovie?.id;
+        const finalPool = moviePool.length > 1 && previousPickedId
+          ? moviePool.filter(group => group.id !== previousPickedId)
+          : moviePool;
+
+        const drawToken = randomDrawTokenRef.current + 1;
+        randomDrawTokenRef.current = drawToken;
+        setRandomPickerOpen(true);
+        setIsRandomPicking(true);
+        setRandomPickedMovie(null);
+        setRandomDrawStep(0);
+
+        const totalSteps = Math.max(16, Math.min(26, finalPool.length * 3));
+        let currentMovie = finalPool[0];
+        let previousIndex = -1;
+
+        for (let step = 0; step < totalSteps; step++) {
+          if (randomDrawTokenRef.current !== drawToken) return;
+
+          let nextIndex = Math.floor(Math.random() * finalPool.length);
+          if (finalPool.length > 1 && nextIndex === previousIndex) {
+            nextIndex = (nextIndex + 1 + Math.floor(Math.random() * (finalPool.length - 1))) % finalPool.length;
+          }
+
+          previousIndex = nextIndex;
+          currentMovie = finalPool[nextIndex];
+          setRandomPreviewMovie(currentMovie);
+          setRandomDrawStep(step + 1);
+
+          const progress = step / Math.max(1, totalSteps - 1);
+          const delay = 55 + Math.round(progress * progress * 145);
+          await wait(delay);
+        }
+
+        if (randomDrawTokenRef.current !== drawToken) return;
+        setRandomPreviewMovie(currentMovie);
+        setRandomPickedMovie(currentMovie);
+        setIsRandomPicking(false);
+      };
+
+      const openPickedMovieInfo = () => {
+        const pickedMovie = randomPickedMovie;
+        if (!pickedMovie?.representative) return;
+
+        randomDrawTokenRef.current += 1;
+        setRandomPickerOpen(false);
+        setIsRandomPicking(false);
+        setRandomPreviewMovie(null);
+        setRandomPickedMovie(null);
+        setRandomDrawStep(0);
+        openMovieInfo(pickedMovie.representative);
+      };
+
+      useEffect(() => {
+        if (!randomPickerOpen) return;
+
+        const handleRandomPickerKeyDown = event => {
+          if (event.key === 'Escape') closeRandomMoviePicker();
+        };
+
+        window.addEventListener('keydown', handleRandomPickerKeyDown);
+        return () => window.removeEventListener('keydown', handleRandomPickerKeyDown);
+      }, [randomPickerOpen]);
 
 
       // Album 검색창도 TMDB 후보를 사용합니다. 후보를 선택하면
@@ -5141,6 +5319,113 @@
               </>
             )}
           </main>
+
+          {appData.reviews.length > 0 && !randomPickerOpen && !movieInfoTarget && !posterTarget && (
+            <button
+              type="button"
+              onClick={drawRandomMovie}
+              className="random-picker-fab fixed bottom-5 right-4 z-40 flex h-12 items-center gap-2 rounded-full border border-teal-300/40 bg-teal-500 px-4 text-sm font-black text-slate-950 transition-transform hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6"
+              aria-label={randomMovieCopy.button}
+              title={randomMovieCopy.button}
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-950/15">
+                <Film className="h-4 w-4" />
+              </span>
+              <span className="hidden sm:inline">{randomMovieCopy.button}</span>
+            </button>
+          )}
+
+          {randomPickerOpen && (
+            <div
+              className="fixed inset-0 z-[58] flex items-center justify-center bg-slate-950/88 px-4 py-5 backdrop-blur-md animate-in fade-in duration-200"
+              onClick={closeRandomMoviePicker}
+            >
+              <div
+                className="mobile-width-safe w-full max-w-sm overflow-hidden rounded-[28px] border border-slate-700 bg-slate-900 shadow-2xl animate-in zoom-in-95 duration-200"
+                onClick={event => event.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold tracking-[0.22em] text-teal-400">MOVIE ROULETTE</p>
+                    <h2 className="mt-1 text-lg font-black text-white">{randomMovieCopy.title}</h2>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500">{randomMovieCopy.guide}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeRandomMoviePicker}
+                    className="shrink-0 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+                    aria-label={randomMovieCopy.close}
+                    title={randomMovieCopy.close}
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="relative overflow-hidden px-5 pb-5 pt-6">
+                  <div className="pointer-events-none absolute left-1/2 top-0 h-32 w-32 -translate-x-1/2 rounded-full bg-teal-400/15 blur-3xl"></div>
+
+                  <div className="relative mx-auto w-[172px]">
+                    <div className="absolute -inset-2 rounded-[22px] border border-dashed border-slate-600/70"></div>
+                    <div
+                      key={`random-poster-${randomDrawStep}`}
+                      className={`relative aspect-[2/3] overflow-hidden rounded-2xl border border-slate-600 bg-slate-800 shadow-2xl ${randomPreviewMovie ? 'random-picker-poster-swap' : ''}`}
+                    >
+                      {randomPreviewMovie && (randomPreviewMovie.posterUrl || getPosterUrl(randomPreviewMovie.representative)) ? (
+                        <img
+                          src={randomPreviewMovie.posterUrl || getPosterUrl(randomPreviewMovie.representative)}
+                          alt={randomPreviewMovie.representative?.movieTitle || ''}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-600">
+                          <Film className={`h-10 w-10 ${isRandomPicking ? 'random-picker-reel-spin' : ''}`} />
+                          <span className="text-[10px] font-semibold tracking-widest">NO COVER</span>
+                        </div>
+                      )}
+
+                      {isRandomPicking && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20"></div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={`mt-5 min-h-[74px] text-center ${randomPickedMovie ? 'random-picker-result-pop' : ''}`}>
+                    <div className="flex items-center justify-center gap-2 text-[11px] font-bold text-teal-400">
+                      {isRandomPicking && <Film className="random-picker-reel-spin h-3.5 w-3.5" />}
+                      <span>{isRandomPicking ? randomMovieCopy.drawing : randomMovieCopy.selected}</span>
+                    </div>
+                    <h3 className="mt-2 line-clamp-2 text-lg font-black leading-snug text-white">
+                      {randomPreviewMovie?.representative?.movieTitle || '—'}
+                    </h3>
+                    {randomPreviewMovie && (
+                      <p className="mt-2 text-[11px] text-slate-500">
+                        {randomPreviewMovie.memberCount}{randomMovieCopy.viewers} · {randomPreviewMovie.reviewCount}{randomMovieCopy.reviews} · ★ {Number(randomPreviewMovie.average || 0).toFixed(1)}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={drawRandomMovie}
+                      disabled={isRandomPicking}
+                      className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-3 text-xs font-bold text-slate-300 transition-colors hover:border-teal-500/60 hover:text-teal-400 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {randomMovieCopy.drawAgain}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openPickedMovieInfo}
+                      disabled={isRandomPicking || !randomPickedMovie}
+                      className="rounded-xl bg-teal-500 px-3 py-3 text-xs font-black text-slate-950 transition-colors hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {randomMovieCopy.openInfo}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {movieInfoTarget && (
             <div
